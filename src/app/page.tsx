@@ -1,0 +1,187 @@
+'use client';
+
+/**
+ * EduVi Main Page
+ * ===============
+ * 
+ * The main editor page that assembles all components:
+ * - Sidebar (left): Slide list with drag-and-drop reordering
+ * - Toolbar (top): Content and layout buttons
+ * - MainStage (center): Active slide editor
+ * - MaterialSidebar (right): Material library for drag-and-drop widgets
+ * 
+ * Data Flow:
+ * 1. On mount, fetch document from Mock API (/api/project)
+ * 2. Store document in Zustand store
+ * 3. Components read from store and render accordingly
+ * 4. User edits trigger store updates
+ * 5. Store updates propagate to all subscribed components
+ * 
+ * Material Drop Flow:
+ * - Materials dragged from MaterialSidebar
+ * - DndContext at page level catches drop events
+ * - dropMaterial action creates new block with widget content
+ */
+
+import React, { useEffect, useCallback } from 'react';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+  pointerWithin,
+  rectIntersection,
+  CollisionDetection,
+} from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { useDocumentStore } from '@/store';
+import { Sidebar, Toolbar, MainStage } from '@/components/layout';
+import { MaterialSidebar } from '@/components/sidebar/MaterialSidebar';
+import { IMaterial } from '@/types';
+import { Package } from 'lucide-react';
+
+/**
+ * Custom collision detection that prefers layout columns over other targets
+ */
+const customCollisionDetection: CollisionDetection = (args) => {
+  // First, check for layout column collisions using pointer
+  const pointerCollisions = pointerWithin(args);
+  
+  // If we have a layout column collision, prioritize it
+  const columnCollision = pointerCollisions.find(
+    (collision) => collision.data?.droppableContainer?.data?.current?.type === 'LAYOUT_COLUMN'
+  );
+  
+  if (columnCollision) {
+    return [columnCollision];
+  }
+  
+  // Fall back to rect intersection for other collisions
+  const rectCollisions = rectIntersection(args);
+  return rectCollisions.length > 0 ? rectCollisions : pointerCollisions;
+};
+
+export default function EditorPage() {
+  const loadDocument = useDocumentStore((state) => state.loadDocument);
+  const activeCardId = useDocumentStore((state) => state.activeCardId);
+  const dropMaterial = useDocumentStore((state) => state.dropMaterial);
+  const reorderNodesInCard = useDocumentStore((state) => state.reorderNodesInCard);
+
+  const [activeDragItem, setActiveDragItem] = React.useState<IMaterial | null>(null);
+
+  // Load document on mount
+  useEffect(() => {
+    loadDocument();
+  }, [loadDocument]);
+
+  // Configure sensors for drag-and-drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag start - track what's being dragged
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const dragData = active.data.current;
+
+    if (dragData?.type === 'MATERIAL') {
+      setActiveDragItem(dragData.material as IMaterial);
+    }
+  };
+
+  // Handle drag end - process material drops and reordering
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    const dragData = active.data.current;
+
+    // Reset drag state
+    setActiveDragItem(null);
+
+    if (!over) return;
+
+    // Handle material drop
+    if (dragData?.type === 'MATERIAL') {
+      const material = dragData.material as IMaterial;
+      
+      // Check if dropped on a layout column
+      if (over.data.current?.type === 'LAYOUT_COLUMN') {
+        const layoutId = over.data.current.layoutId as string;
+        const columnIndex = over.data.current.columnIndex as number;
+        dropMaterial(layoutId, material, columnIndex);
+        return;
+      }
+      
+      // Check if dropped on a layout (legacy support)
+      if (over.data.current?.type === 'LAYOUT') {
+        const layoutId = over.data.current.layoutId as string;
+        dropMaterial(layoutId, material);
+        return;
+      }
+      
+      // Otherwise drop into the active card
+      if (activeCardId) {
+        dropMaterial(activeCardId, material);
+      }
+      return;
+    }
+
+    // Handle sortable reordering (for blocks within cards)
+    if (active.id !== over.id && activeCardId) {
+      reorderNodesInCard(activeCardId, active.id as string, over.id as string);
+    }
+  };
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={customCollisionDetection}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="h-screen flex flex-col bg-surface-tertiary">
+        {/* Top Toolbar */}
+        <Toolbar />
+
+        {/* Main content area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Sidebar */}
+          <Sidebar />
+
+          {/* Center Stage */}
+          <MainStage />
+
+          {/* Right Sidebar - Material Library */}
+          <MaterialSidebar />
+        </div>
+      </div>
+
+      {/* Drag Overlay - shows dragged item preview */}
+      <DragOverlay>
+        {activeDragItem && (
+          <div className="bg-white border-2 border-indigo-400 rounded-lg p-3 shadow-xl opacity-90">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-indigo-100 rounded flex items-center justify-center">
+                <Package className="w-4 h-4 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">{activeDragItem.name}</p>
+                <p className="text-xs text-gray-500">Drop to add</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
+  );
+}

@@ -1,0 +1,448 @@
+/**
+ * MaterialSidebar Component
+ * =========================
+ * 
+ * Right sidebar displaying the material library.
+ * Users can drag materials from here to drop into cards.
+ * 
+ * Features:
+ * - Fetches materials from API
+ * - Groups by category
+ * - Draggable items using dnd-kit
+ * - Search/filter functionality
+ * - Quick layout buttons for multi-widget rows
+ */
+
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { useDraggable } from '@dnd-kit/core';
+import { cn } from '@/lib/utils';
+import { useDocumentStore } from '@/store';
+import { IMaterial, MaterialCategory, LayoutVariant } from '@/types';
+import * as LucideIcons from 'lucide-react';
+import { 
+  Loader2, 
+  Search, 
+  GripVertical, 
+  ChevronDown, 
+  ChevronRight, 
+  Package,
+  Columns2,
+  Columns3,
+  LayoutGrid,
+} from 'lucide-react';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface MaterialSidebarProps {
+  className?: string;
+}
+
+interface MaterialItemProps {
+  material: IMaterial;
+}
+
+interface CategorySectionProps {
+  category: MaterialCategory;
+  materials: IMaterial[];
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+// ============================================================================
+// HELPER: Get Lucide Icon by name
+// ============================================================================
+
+function getIconByName(name: string): React.ReactNode {
+  const icons = LucideIcons as unknown as Record<string, React.FC<{ className?: string }>>;
+  const IconComponent = icons[name];
+  if (IconComponent) {
+    return <IconComponent className="w-4 h-4" />;
+  }
+  return <Package className="w-4 h-4" />;
+}
+
+// ============================================================================
+// CATEGORY LABELS & ICONS
+// ============================================================================
+
+const categoryConfig: Record<MaterialCategory, { label: string; icon: keyof typeof LucideIcons }> = {
+  [MaterialCategory.MEDIA]: { label: 'Media', icon: 'Film' },
+  [MaterialCategory.INTERACTIVE]: { label: 'Interactive', icon: 'MousePointer2' },
+  [MaterialCategory.DATA]: { label: 'Data & Charts', icon: 'BarChart3' },
+  [MaterialCategory.EMBED]: { label: 'Embeds', icon: 'Code' },
+};
+
+// ============================================================================
+// DRAGGABLE MATERIAL ITEM
+// ============================================================================
+
+function DraggableMaterialItem({ material }: MaterialItemProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `material-${material.id}`,
+    data: {
+      type: 'MATERIAL',
+      material,
+    },
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: isDragging ? 1000 : undefined,
+      }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'group flex items-center gap-3 p-2 rounded-lg cursor-grab',
+        'bg-white border border-gray-200',
+        'hover:border-indigo-300 hover:bg-indigo-50/50',
+        'transition-all duration-150',
+        isDragging && 'opacity-50 shadow-lg ring-2 ring-indigo-400'
+      )}
+      {...listeners}
+      {...attributes}
+    >
+      {/* Drag Handle */}
+      <div className="flex-shrink-0 text-gray-400 group-hover:text-indigo-400">
+        <GripVertical className="w-4 h-4" />
+      </div>
+
+      {/* Icon */}
+      <div
+        className={cn(
+          'flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center',
+          'bg-gradient-to-br from-indigo-100 to-purple-100',
+          'text-indigo-600'
+        )}
+      >
+        {getIconByName(material.icon)}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-medium text-gray-900 truncate">
+          {material.name}
+        </h4>
+        <p className="text-xs text-gray-500 truncate">
+          {material.description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// CATEGORY SECTION
+// ============================================================================
+
+function CategorySection({ category, materials, isExpanded, onToggle }: CategorySectionProps) {
+  const config = categoryConfig[category];
+  const icons = LucideIcons as unknown as Record<string, React.FC<{ className?: string }>>;
+  const CategoryIcon = icons[config.icon];
+
+  return (
+    <div className="border-b border-gray-100 last:border-b-0">
+      {/* Category Header */}
+      <button
+        onClick={onToggle}
+        className={cn(
+          'w-full flex items-center gap-2 px-3 py-2.5',
+          'text-left hover:bg-gray-50 transition-colors'
+        )}
+      >
+        {isExpanded ? (
+          <ChevronDown className="w-4 h-4 text-gray-400" />
+        ) : (
+          <ChevronRight className="w-4 h-4 text-gray-400" />
+        )}
+        {CategoryIcon && <CategoryIcon className="w-4 h-4 text-gray-600" />}
+        <span className="flex-1 text-sm font-medium text-gray-700">
+          {config.label}
+        </span>
+        <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+          {materials.length}
+        </span>
+      </button>
+
+      {/* Materials List */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-2">
+          {materials.map((material) => (
+            <DraggableMaterialItem key={material.id} material={material} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+export function MaterialSidebar({ className }: MaterialSidebarProps) {
+  const [materials, setMaterials] = useState<IMaterial[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Set<MaterialCategory>>(
+    new Set(Object.values(MaterialCategory))
+  );
+
+  // --------------------------------------------------------------------------
+  // Fetch materials on mount
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    async function fetchMaterials() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/materials');
+        const result = await response.json();
+
+        if (result.success) {
+          setMaterials(result.data);
+        } else {
+          setError('Failed to load materials');
+        }
+      } catch (err) {
+        setError('Network error');
+        console.error('Failed to fetch materials:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchMaterials();
+  }, []);
+
+  // --------------------------------------------------------------------------
+  // Filter materials by search query
+  // --------------------------------------------------------------------------
+  const filteredMaterials = useMemo(() => {
+    if (!searchQuery.trim()) return materials;
+
+    const query = searchQuery.toLowerCase();
+    return materials.filter(
+      (m) =>
+        m.name.toLowerCase().includes(query) ||
+        m.description.toLowerCase().includes(query)
+    );
+  }, [materials, searchQuery]);
+
+  // --------------------------------------------------------------------------
+  // Group materials by category
+  // --------------------------------------------------------------------------
+  const materialsByCategory = useMemo(() => {
+    const grouped: Record<MaterialCategory, IMaterial[]> = {
+      [MaterialCategory.MEDIA]: [],
+      [MaterialCategory.INTERACTIVE]: [],
+      [MaterialCategory.DATA]: [],
+      [MaterialCategory.EMBED]: [],
+    };
+
+    filteredMaterials.forEach((material) => {
+      if (grouped[material.category]) {
+        grouped[material.category].push(material);
+      }
+    });
+
+    return grouped;
+  }, [filteredMaterials]);
+
+  // --------------------------------------------------------------------------
+  // Toggle category expansion
+  // --------------------------------------------------------------------------
+  const toggleCategory = (category: MaterialCategory) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  // --------------------------------------------------------------------------
+  // Render
+  // --------------------------------------------------------------------------
+  return (
+    <aside
+      className={cn(
+        'w-72 bg-gray-50 border-l border-gray-200',
+        'flex flex-col h-full overflow-hidden',
+        className
+      )}
+    >
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 bg-white">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">
+          Material Library
+        </h2>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search materials..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={cn(
+              'w-full pl-9 pr-3 py-2 text-sm',
+              'border border-gray-200 rounded-lg',
+              'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
+              'placeholder:text-gray-400'
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center h-40">
+            <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="p-4 text-center">
+            <p className="text-sm text-red-500">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 text-sm text-indigo-600 hover:underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && filteredMaterials.length === 0 && (
+          <div className="p-4 text-center">
+            <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">
+              {searchQuery ? 'No materials found' : 'No materials available'}
+            </p>
+          </div>
+        )}
+
+        {/* Categories */}
+        {!loading && !error && filteredMaterials.length > 0 && (
+          <div className="divide-y divide-gray-100">
+            {Object.values(MaterialCategory).map((category) => {
+              const categoryMaterials = materialsByCategory[category];
+              if (categoryMaterials.length === 0) return null;
+
+              return (
+                <CategorySection
+                  key={category}
+                  category={category}
+                  materials={categoryMaterials}
+                  isExpanded={expandedCategories.has(category)}
+                  onToggle={() => toggleCategory(category)}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Layout Buttons */}
+      <QuickLayoutSection />
+
+      {/* Footer Hint */}
+      <div className="p-3 bg-indigo-50 border-t border-indigo-100">
+        <p className="text-xs text-indigo-600 text-center">
+          <span className="font-medium">Tip:</span> Drop widgets into layout columns
+        </p>
+      </div>
+    </aside>
+  );
+}
+
+// ============================================================================
+// QUICK LAYOUT SECTION
+// ============================================================================
+
+function QuickLayoutSection() {
+  const activeCardId = useDocumentStore((state) => state.activeCardId);
+  const addLayoutToCard = useDocumentStore((state) => state.addLayoutToCard);
+
+  const handleAddLayout = (variant: LayoutVariant) => {
+    if (activeCardId) {
+      addLayoutToCard(activeCardId, variant);
+    }
+  };
+
+  return (
+    <div className="p-3 border-t border-gray-200 bg-white">
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+        Quick Layouts
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => handleAddLayout(LayoutVariant.TWO_COLUMN)}
+          disabled={!activeCardId}
+          className={cn(
+            'flex flex-col items-center gap-1 p-2 rounded-lg border',
+            'transition-all duration-150',
+            activeCardId
+              ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600'
+              : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+          )}
+          title="Add 2-column layout"
+        >
+          <Columns2 className="w-5 h-5" />
+          <span className="text-[10px] font-medium">2 Cols</span>
+        </button>
+
+        <button
+          onClick={() => handleAddLayout(LayoutVariant.THREE_COLUMN)}
+          disabled={!activeCardId}
+          className={cn(
+            'flex flex-col items-center gap-1 p-2 rounded-lg border',
+            'transition-all duration-150',
+            activeCardId
+              ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600'
+              : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+          )}
+          title="Add 3-column layout"
+        >
+          <Columns3 className="w-5 h-5" />
+          <span className="text-[10px] font-medium">3 Cols</span>
+        </button>
+
+        <button
+          onClick={() => handleAddLayout(LayoutVariant.SIDEBAR_LEFT)}
+          disabled={!activeCardId}
+          className={cn(
+            'flex flex-col items-center gap-1 p-2 rounded-lg border',
+            'transition-all duration-150',
+            activeCardId
+              ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600'
+              : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+          )}
+          title="Add sidebar layout"
+        >
+          <LayoutGrid className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Sidebar</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default MaterialSidebar;
