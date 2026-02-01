@@ -23,11 +23,11 @@ import { BlockType } from '@/types';
 // TYPES
 // ============================================================================
 
-export interface InteractiveWidgetProps<T = unknown> {
+export interface InteractiveWidgetProps {
   id: string;
-  data: T;
+  data: Record<string, unknown>;
   isSelected?: boolean;
-  onUpdate: (data: Partial<T>) => void;
+  onUpdate: (data: Record<string, unknown>) => void;
 }
 
 export type InteractiveWidgetComponent = React.ComponentType<InteractiveWidgetProps>;

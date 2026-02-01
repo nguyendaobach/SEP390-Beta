@@ -47,7 +47,7 @@ import {
 import { TextBlock, HeadingBlock, ImageBlock, VideoBlock } from '@/components/blocks';
 import { ResizableBlockWrapper } from '@/components/blocks/ResizableBlockWrapper';
 import { renderWidget } from '@/components/widgets';
-import { renderInteractiveWidget } from '@/components/interactive';
+import { QuizBlock, FlashcardBlock, FillInBlankBlock } from '@/components/interactive';
 import { useSortable } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -239,54 +239,50 @@ function BlockRenderer({ node }: { node: IBlock }) {
 
   // Handle Interactive blocks (Quiz, Flashcard, Fill-in-Blank)
   if (isQuizContent(content)) {
-    return renderInteractiveWidget(
-      'QUIZ',
-      {
-        id: node.id,
-        data: content,
-        isSelected,
-        onUpdate: (newData) => {
-          // Update via store
+    return (
+      <QuizBlock
+        id={node.id}
+        data={content}
+        isSelected={isSelected}
+        onUpdate={(newData) => {
           useDocumentStore.getState().updateBlockContent(node.id, {
             ...content,
             ...newData,
           });
-        },
-      }
+        }}
+      />
     );
   }
 
   if (isFlashcardContent(content)) {
-    return renderInteractiveWidget(
-      'FLASHCARD',
-      {
-        id: node.id,
-        data: content,
-        isSelected,
-        onUpdate: (newData) => {
+    return (
+      <FlashcardBlock
+        id={node.id}
+        data={content}
+        isSelected={isSelected}
+        onUpdate={(newData) => {
           useDocumentStore.getState().updateBlockContent(node.id, {
             ...content,
             ...newData,
           });
-        },
-      }
+        }}
+      />
     );
   }
 
   if (isFillBlankContent(content)) {
-    return renderInteractiveWidget(
-      'FILL_BLANK',
-      {
-        id: node.id,
-        data: content,
-        isSelected,
-        onUpdate: (newData) => {
+    return (
+      <FillInBlankBlock
+        id={node.id}
+        data={content}
+        isSelected={isSelected}
+        onUpdate={(newData) => {
           useDocumentStore.getState().updateBlockContent(node.id, {
             ...content,
             ...newData,
           });
-        },
-      }
+        }}
+      />
     );
   }
 

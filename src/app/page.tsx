@@ -9,6 +9,7 @@
  * - Toolbar (top): Content and layout buttons
  * - MainStage (center): Active slide editor
  * - MaterialSidebar (right): Material library for drag-and-drop widgets
+ * - PresentationLayer: Full-screen overlay for presentation mode
  * 
  * Data Flow:
  * 1. On mount, fetch document from Mock API (/api/project)
@@ -21,6 +22,10 @@
  * - Materials dragged from MaterialSidebar
  * - DndContext at page level catches drop events
  * - dropMaterial action creates new block with widget content
+ * 
+ * App Modes:
+ * - EDITOR: Default editing mode with all UI elements
+ * - PRESENT: Full-screen presentation with slide navigation
  */
 
 import React, { useEffect, useCallback } from 'react';
@@ -41,6 +46,7 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useDocumentStore } from '@/store';
 import { Sidebar, Toolbar, MainStage } from '@/components/layout';
 import { MaterialSidebar } from '@/components/sidebar/MaterialSidebar';
+import { PresentationLayer } from '@/components/presentation';
 import { IMaterial } from '@/types';
 import { Package } from 'lucide-react';
 
@@ -143,45 +149,50 @@ export default function EditorPage() {
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={customCollisionDetection}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="h-screen flex flex-col bg-surface-tertiary">
-        {/* Top Toolbar */}
-        <Toolbar />
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={customCollisionDetection}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="h-screen flex flex-col bg-surface-tertiary">
+          {/* Top Toolbar */}
+          <Toolbar />
 
-        {/* Main content area */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Sidebar */}
-          <Sidebar />
+          {/* Main content area */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left Sidebar */}
+            <Sidebar />
 
-          {/* Center Stage */}
-          <MainStage />
+            {/* Center Stage */}
+            <MainStage />
 
-          {/* Right Sidebar - Material Library */}
-          <MaterialSidebar />
+            {/* Right Sidebar - Material Library */}
+            <MaterialSidebar />
+          </div>
         </div>
-      </div>
 
-      {/* Drag Overlay - shows dragged item preview */}
-      <DragOverlay>
-        {activeDragItem && (
-          <div className="bg-white border-2 border-indigo-400 rounded-lg p-3 shadow-xl opacity-90">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-indigo-100 rounded flex items-center justify-center">
-                <Package className="w-4 h-4 text-indigo-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">{activeDragItem.name}</p>
-                <p className="text-xs text-gray-500">Drop to add</p>
+        {/* Drag Overlay - shows dragged item preview */}
+        <DragOverlay>
+          {activeDragItem && (
+            <div className="bg-white border-2 border-indigo-400 rounded-lg p-3 shadow-xl opacity-90">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-indigo-100 rounded flex items-center justify-center">
+                  <Package className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{activeDragItem.name}</p>
+                  <p className="text-xs text-gray-500">Drop to add</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </DragOverlay>
-    </DndContext>
+          )}
+        </DragOverlay>
+      </DndContext>
+
+      {/* Presentation Mode Overlay */}
+      <PresentationLayer />
+    </>
   );
 }

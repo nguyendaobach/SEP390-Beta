@@ -73,6 +73,12 @@ function getColumnCountForVariant(variant: LayoutVariant): number {
 }
 
 // ============================================================================
+// APP MODE
+// ============================================================================
+
+export type AppMode = 'EDITOR' | 'PRESENT';
+
+// ============================================================================
 // STORE TYPES
 // ============================================================================
 
@@ -83,10 +89,22 @@ interface DocumentState {
   selectedNodeId: string | null;
   isLoading: boolean;
   error: string | null;
+  
+  // App Mode State
+  appMode: AppMode;
+  presentationSlideIndex: number;
 
   // Document Actions
   loadDocument: () => Promise<void>;
   setDocument: (doc: IDocument) => void;
+  
+  // App Mode Actions
+  setAppMode: (mode: AppMode) => void;
+  startPresentation: () => void;
+  exitPresentation: () => void;
+  nextSlide: () => void;
+  previousSlide: () => void;
+  goToSlide: (index: number) => void;
   
   // Navigation Actions
   setActiveCard: (cardId: string) => void;
@@ -262,6 +280,71 @@ export const useDocumentStore = create<DocumentState>()(
       selectedNodeId: null,
       isLoading: false,
       error: null,
+      
+      // App Mode State
+      appMode: 'EDITOR' as AppMode,
+      presentationSlideIndex: 0,
+
+      // ======================================================================
+      // APP MODE ACTIONS
+      // ======================================================================
+
+      setAppMode: (mode: AppMode) => {
+        set({ appMode: mode });
+      },
+
+      startPresentation: () => {
+        const { document, activeCardId } = get();
+        if (!document) return;
+
+        // Find current slide index
+        const slideIndex = activeCardId 
+          ? document.cards.findIndex((c) => c.id === activeCardId)
+          : 0;
+
+        set({
+          appMode: 'PRESENT',
+          presentationSlideIndex: Math.max(0, slideIndex),
+          selectedNodeId: null,
+        });
+      },
+
+      exitPresentation: () => {
+        const { document, presentationSlideIndex } = get();
+        if (!document) return;
+
+        // Set active card to the current slide
+        const currentCard = document.cards[presentationSlideIndex];
+        set({
+          appMode: 'EDITOR',
+          activeCardId: currentCard?.id || document.cards[0]?.id || null,
+        });
+      },
+
+      nextSlide: () => {
+        const { document, presentationSlideIndex } = get();
+        if (!document) return;
+
+        const maxIndex = document.cards.length - 1;
+        if (presentationSlideIndex < maxIndex) {
+          set({ presentationSlideIndex: presentationSlideIndex + 1 });
+        }
+      },
+
+      previousSlide: () => {
+        const { presentationSlideIndex } = get();
+        if (presentationSlideIndex > 0) {
+          set({ presentationSlideIndex: presentationSlideIndex - 1 });
+        }
+      },
+
+      goToSlide: (index: number) => {
+        const { document } = get();
+        if (!document) return;
+
+        const clampedIndex = Math.max(0, Math.min(index, document.cards.length - 1));
+        set({ presentationSlideIndex: clampedIndex });
+      },
 
       // ======================================================================
       // DOCUMENT ACTIONS

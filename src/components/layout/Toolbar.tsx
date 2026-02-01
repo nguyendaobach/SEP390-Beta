@@ -25,6 +25,7 @@ import {
   Redo2,
   Save,
   Download,
+  Play,
   // Interactive icons
   HelpCircle,
   Layers,
@@ -68,6 +69,7 @@ export function Toolbar() {
   const addBlockToCard = useDocumentStore((state) => state.addBlockToCard);
   const addLayoutToCard = useDocumentStore((state) => state.addLayoutToCard);
   const document = useDocumentStore((state) => state.document);
+  const startPresentation = useDocumentStore((state) => state.startPresentation);
 
   const hasActiveCard = !!activeCardId;
 
@@ -176,6 +178,24 @@ export function Toolbar() {
 
       {/* Right section - Actions */}
       <div className="flex items-center gap-2">
+        {/* Present Button */}
+        <button
+          onClick={startPresentation}
+          disabled={!document || !document.cards.length}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-lg',
+            'bg-indigo-500 hover:bg-indigo-600 text-white',
+            'font-medium text-sm transition-colors',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+          title="Start Presentation Mode"
+        >
+          <Play className="w-4 h-4" />
+          Present
+        </button>
+        
+        <ToolbarDivider />
+        
         <button
           className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
           title="Undo"
