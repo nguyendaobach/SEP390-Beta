@@ -90,6 +90,13 @@ interface DocumentState {
   isLoading: boolean;
   error: string | null;
   
+  // History for undo/redo
+  history: IDocument[];
+  historyIndex: number;
+  
+  // Online users
+  onlineUsers: Array<{ id: string; name: string; avatar: string; color: string }>;
+  
   // App Mode State
   appMode: AppMode;
   presentationSlideIndex: number;
@@ -97,6 +104,15 @@ interface DocumentState {
   // Document Actions
   loadDocument: () => Promise<void>;
   setDocument: (doc: IDocument) => void;
+  
+  // Undo/Redo Actions
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  
+  // Online Users Actions
+  setOnlineUsers: (users: Array<{ id: string; name: string; avatar: string; color: string }>) => void;
   
   // App Mode Actions
   setAppMode: (mode: AppMode) => void;
@@ -273,13 +289,48 @@ function createBlockByType(blockType: BlockType): IBlock {
 
 export const useDocumentStore = create<DocumentState>()(
   devtools(
-    subscribeWithSelector((set, get) => ({
+    subscribeWithSelector((set, get) => {
+      // Helper function to update document with history tracking
+      const setDocumentWithHistory = (newDoc: IDocument, otherUpdates: Partial<Omit<DocumentState, 'document' | 'history' | 'historyIndex'>> = {}) => {
+        const { history, historyIndex } = get();
+        
+        // Add to history (remove any future history if we're not at the end)
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(deepClone(newDoc));
+        
+        // Limit history to 50 items
+        if (newHistory.length > 50) {
+          newHistory.shift();
+        }
+        
+        set({
+          document: newDoc,
+          history: newHistory,
+          historyIndex: newHistory.length - 1,
+          ...otherUpdates,
+        });
+      };
+
+      return {
       // Initial State
       document: null,
       activeCardId: null,
       selectedNodeId: null,
       isLoading: false,
       error: null,
+      
+      // History State
+      history: [],
+      historyIndex: -1,
+      
+      // Online Users State (mock data)
+      onlineUsers: [
+        { id: '1', name: 'You', avatar: 'P', color: 'bg-purple-500' },
+        { id: '2', name: 'User 2', avatar: 'A', color: 'bg-blue-500' },
+        { id: '3', name: 'User 3', avatar: 'B', color: 'bg-green-500' },
+        { id: '4', name: 'User 4', avatar: 'C', color: 'bg-yellow-500' },
+        { id: '5', name: 'User 5', avatar: 'D', color: 'bg-red-500' },
+      ],
       
       // App Mode State
       appMode: 'EDITOR' as AppMode,
@@ -375,10 +426,62 @@ export const useDocumentStore = create<DocumentState>()(
       },
 
       setDocument: (doc: IDocument) => {
+        const { history, historyIndex } = get();
+        
+        // Add to history
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(deepClone(doc));
+        
         set({
           document: doc,
           activeCardId: doc.activeCardId || doc.cards[0]?.id || null,
+          history: newHistory,
+          historyIndex: newHistory.length - 1,
         });
+      },
+
+      // ======================================================================
+      // UNDO/REDO ACTIONS
+      // ======================================================================
+
+      undo: () => {
+        const { history, historyIndex } = get();
+        if (historyIndex > 0) {
+          const newIndex = historyIndex - 1;
+          set({
+            document: deepClone(history[newIndex]),
+            historyIndex: newIndex,
+          });
+        }
+      },
+
+      redo: () => {
+        const { history, historyIndex } = get();
+        if (historyIndex < history.length - 1) {
+          const newIndex = historyIndex + 1;
+          set({
+            document: deepClone(history[newIndex]),
+            historyIndex: newIndex,
+          });
+        }
+      },
+
+      canUndo: () => {
+        const { historyIndex } = get();
+        return historyIndex > 0;
+      },
+
+      canRedo: () => {
+        const { history, historyIndex } = get();
+        return historyIndex < history.length - 1;
+      },
+
+      // ======================================================================
+      // ONLINE USERS ACTIONS
+      // ======================================================================
+
+      setOnlineUsers: (users) => {
+        set({ onlineUsers: users });
       },
 
       // ======================================================================
@@ -416,12 +519,13 @@ export const useDocumentStore = create<DocumentState>()(
           [createTextBlock(`block-${uuidv4()}`, '<p>New slide content...</p>')]
         );
 
-        set({
-          document: {
-            ...document,
-            cards: [...document.cards, newCard],
-            updatedAt: new Date().toISOString(),
-          },
+        const newDoc = {
+          ...document,
+          cards: [...document.cards, newCard],
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc, {
           activeCardId: newCard.id,
         });
       },
@@ -432,16 +536,17 @@ export const useDocumentStore = create<DocumentState>()(
 
         const newBlock = createBlockByType(blockType);
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) =>
-              card.id === cardId
-                ? { ...card, children: [...card.children, newBlock] }
-                : card
-            ),
-            updatedAt: new Date().toISOString(),
-          },
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) =>
+            card.id === cardId
+              ? { ...card, children: [...card.children, newBlock] }
+              : card
+          ),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc, {
           selectedNodeId: newBlock.id,
         });
       },
@@ -458,16 +563,17 @@ export const useDocumentStore = create<DocumentState>()(
           4
         );
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) =>
-              card.id === cardId
-                ? { ...card, children: [...card.children, newLayout] }
-                : card
-            ),
-            updatedAt: new Date().toISOString(),
-          },
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) =>
+            card.id === cardId
+              ? { ...card, children: [...card.children, newLayout] }
+              : card
+          ),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc, {
           selectedNodeId: newLayout.id,
         });
       },
@@ -478,27 +584,28 @@ export const useDocumentStore = create<DocumentState>()(
 
         const newBlock = createBlockByType(blockType);
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) => ({
-              ...card,
-              children: updateNodeInTree<ILayout | IBlock>(
-                card.children,
-                layoutId,
-                (node) => {
-                  if (isLayout(node)) {
-                    return {
-                      ...node,
-                      children: [...node.children, newBlock],
-                    } as ILayout;
-                  }
-                  return node;
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) => ({
+            ...card,
+            children: updateNodeInTree<ILayout | IBlock>(
+              card.children,
+              layoutId,
+              (node) => {
+                if (isLayout(node)) {
+                  return {
+                    ...node,
+                    children: [...node.children, newBlock],
+                  } as ILayout;
                 }
-              ),
-            })),
-            updatedAt: new Date().toISOString(),
-          },
+                return node;
+              }
+            ),
+          })),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc, {
           selectedNodeId: newBlock.id,
         });
       },
@@ -511,50 +618,50 @@ export const useDocumentStore = create<DocumentState>()(
         const { document } = get();
         if (!document) return;
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) => {
-              if (card.id === nodeId) {
-                return { ...card, ...updates } as ICard;
-              }
-              return {
-                ...card,
-                children: updateNodeInTree<ILayout | IBlock>(
-                  card.children,
-                  nodeId,
-                  (node) => ({ ...node, ...updates } as INode)
-                ),
-              };
-            }),
-            updatedAt: new Date().toISOString(),
-          },
-        });
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) => {
+            if (card.id === nodeId) {
+              return { ...card, ...updates } as ICard;
+            }
+            return {
+              ...card,
+              children: updateNodeInTree<ILayout | IBlock>(
+                card.children,
+                nodeId,
+                (node) => ({ ...node, ...updates } as INode)
+              ),
+            };
+          }),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc);
       },
 
       updateBlockContent: (blockId: string, content: BlockContent) => {
         const { document } = get();
         if (!document) return;
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) => ({
-              ...card,
-              children: updateNodeInTree<ILayout | IBlock>(
-                card.children,
-                blockId,
-                (node) => {
-                  if (isBlock(node)) {
-                    return { ...node, content };
-                  }
-                  return node;
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) => ({
+            ...card,
+            children: updateNodeInTree<ILayout | IBlock>(
+              card.children,
+              blockId,
+              (node) => {
+                if (isBlock(node)) {
+                  return { ...node, content };
                 }
-              ),
-            })),
-            updatedAt: new Date().toISOString(),
-          },
-        });
+                return node;
+              }
+            ),
+          })),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc);
       },
 
       updateCardTitle: (cardId: string, title: string) => {
@@ -591,29 +698,31 @@ export const useDocumentStore = create<DocumentState>()(
           const newActiveId =
             activeCardId === nodeId ? newCards[0]?.id || null : activeCardId;
 
-          set({
-            document: {
-              ...document,
-              cards: newCards,
-              updatedAt: new Date().toISOString(),
-            },
+          const newDoc = {
+            ...document,
+            cards: newCards,
+            updatedAt: new Date().toISOString(),
+          };
+
+          setDocumentWithHistory(newDoc, {
             activeCardId: newActiveId,
             selectedNodeId: null,
           });
         } else {
           // Delete node from within cards
-          set({
-            document: {
-              ...document,
-              cards: document.cards.map((card) => ({
-                ...card,
-                children: deleteNodeFromTree<ILayout | IBlock>(
-                  card.children,
-                  nodeId
-                ),
-              })),
-              updatedAt: new Date().toISOString(),
-            },
+          const newDoc = {
+            ...document,
+            cards: document.cards.map((card) => ({
+              ...card,
+              children: deleteNodeFromTree<ILayout | IBlock>(
+                card.children,
+                nodeId
+              ),
+            })),
+            updatedAt: new Date().toISOString(),
+          };
+
+          setDocumentWithHistory(newDoc, {
             selectedNodeId: null,
           });
         }
@@ -632,39 +741,39 @@ export const useDocumentStore = create<DocumentState>()(
 
         if (oldIndex === -1 || newIndex === -1) return;
 
-        set({
-          document: {
-            ...document,
-            cards: arrayMove(document.cards, oldIndex, newIndex),
-            updatedAt: new Date().toISOString(),
-          },
-        });
+        const newDoc = {
+          ...document,
+          cards: arrayMove(document.cards, oldIndex, newIndex),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc);
       },
 
       reorderNodesInCard: (cardId: string, activeId: string, overId: string) => {
         const { document } = get();
         if (!document || activeId === overId) return;
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) => {
-              if (card.id !== cardId) return card;
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) => {
+            if (card.id !== cardId) return card;
 
-              const children = card.children;
-              const oldIndex = children.findIndex((n) => n.id === activeId);
-              const newIndex = children.findIndex((n) => n.id === overId);
+            const children = card.children;
+            const oldIndex = children.findIndex((n) => n.id === activeId);
+            const newIndex = children.findIndex((n) => n.id === overId);
 
-              if (oldIndex === -1 || newIndex === -1) return card;
+            if (oldIndex === -1 || newIndex === -1) return card;
 
-              return {
-                ...card,
-                children: arrayMove(children, oldIndex, newIndex),
-              };
-            }),
-            updatedAt: new Date().toISOString(),
-          },
-        });
+            return {
+              ...card,
+              children: arrayMove(children, oldIndex, newIndex),
+            };
+          }),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc);
       },
 
       // ======================================================================
@@ -929,7 +1038,8 @@ export const useDocumentStore = create<DocumentState>()(
 
         return null;
       },
-    })),
+    };
+    }),
     {
       name: 'eduvi-document-store',
     }

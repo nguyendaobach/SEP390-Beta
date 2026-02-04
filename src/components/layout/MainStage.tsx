@@ -86,8 +86,7 @@ export function MainStage() {
     <main
       className={cn(
         'flex-1 bg-surface-tertiary',
-        'overflow-auto',
-        'p-8 md:p-12'
+        'mt-5'
       )}
       onClick={handleStageClick}
     >

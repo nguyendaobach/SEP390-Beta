@@ -8,7 +8,7 @@
  * Includes Export functionality for .eduvi files.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useDocumentStore } from '@/store';
 import { BlockType, LayoutVariant } from '@/types';
@@ -18,14 +18,12 @@ import {
   Heading1,
   Image,
   Video,
-  Columns2,
-  Columns3,
-  PanelLeft,
   Undo2,
   Redo2,
   Save,
   Download,
   Play,
+  ShoppingBag,
   // Interactive icons
   HelpCircle,
   Layers,
@@ -70,8 +68,27 @@ export function Toolbar() {
   const addLayoutToCard = useDocumentStore((state) => state.addLayoutToCard);
   const document = useDocumentStore((state) => state.document);
   const startPresentation = useDocumentStore((state) => state.startPresentation);
+  const canUndo = useDocumentStore((state) => state.canUndo());
+  const canRedo = useDocumentStore((state) => state.canRedo());
+  const onlineUsers = useDocumentStore((state) => state.onlineUsers);
 
   const hasActiveCard = !!activeCardId;
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        useDocumentStore.getState().undo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        useDocumentStore.getState().redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleAddBlock = (blockType: BlockType) => {
     if (activeCardId) {
@@ -86,129 +103,98 @@ export function Toolbar() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-border px-4 flex items-center justify-between">
+    <header className="h-16 bg-gradient-to-r from-cyan-500 to-purple-600 px-6 flex items-center justify-between shadow-md">
       {/* Left section - Document title */}
-      <div className="flex items-center gap-4">
-        <h1 className="text-lg font-semibold text-gray-900">
-          {document?.title || 'Untitled'}
+      <div className="flex items-center gap-5">
+        <button
+          className="p-2.5 rounded-lg hover:bg-white/10 text-white transition-colors"
+          title="Menu"
+        >
+          <div className="w-6 h-6 flex flex-col justify-center gap-1.5">
+            <div className="w-full h-0.5 bg-white rounded"></div>
+            <div className="w-full h-0.5 bg-white rounded"></div>
+            <div className="w-full h-0.5 bg-white rounded"></div>
+          </div>
+        </button>
+        <h1 className="text-lg font-semibold text-white">
+          {document?.title || 'EduVi Product Launch'}
         </h1>
-        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-          Auto-saved
-        </span>
-      </div>
-
-      {/* Center section - Add content buttons */}
-      <div className="flex items-center gap-2">
-        {/* Block buttons */}
-        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
-          <ToolbarButton
-            icon={<Heading1 className="w-4 h-4" />}
-            label="Heading"
-            onClick={() => handleAddBlock(BlockType.HEADING)}
-            disabled={!hasActiveCard}
-          />
-          <ToolbarButton
-            icon={<Type className="w-4 h-4" />}
-            label="Text"
-            onClick={() => handleAddBlock(BlockType.TEXT)}
-            disabled={!hasActiveCard}
-          />
-          <ToolbarButton
-            icon={<Image className="w-4 h-4" />}
-            label="Image"
-            onClick={() => handleAddBlock(BlockType.IMAGE)}
-            disabled={!hasActiveCard}
-          />
-          <ToolbarButton
-            icon={<Video className="w-4 h-4" />}
-            label="Video"
-            onClick={() => handleAddBlock(BlockType.VIDEO)}
-            disabled={!hasActiveCard}
-          />
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Layout buttons */}
-        <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1">
-          <ToolbarButton
-            icon={<Columns2 className="w-4 h-4" />}
-            label="2 Columns"
-            onClick={() => handleAddLayout(LayoutVariant.TWO_COLUMN)}
-            disabled={!hasActiveCard}
-          />
-          <ToolbarButton
-            icon={<Columns3 className="w-4 h-4" />}
-            label="3 Columns"
-            onClick={() => handleAddLayout(LayoutVariant.THREE_COLUMN)}
-            disabled={!hasActiveCard}
-          />
-          <ToolbarButton
-            icon={<PanelLeft className="w-4 h-4" />}
-            label="Sidebar"
-            onClick={() => handleAddLayout(LayoutVariant.SIDEBAR_LEFT)}
-            disabled={!hasActiveCard}
-          />
-        </div>
-
-        <ToolbarDivider />
-
-        {/* Interactive blocks */}
-        <div className="flex items-center gap-1 bg-amber-50 rounded-lg p-1 border border-amber-200">
-          <ToolbarButton
-            icon={<HelpCircle className="w-4 h-4 text-indigo-600" />}
-            label="Quiz"
-            onClick={() => handleAddBlock(BlockType.QUIZ)}
-            disabled={!hasActiveCard}
-          />
-          <ToolbarButton
-            icon={<Layers className="w-4 h-4 text-amber-600" />}
-            label="Flashcard"
-            onClick={() => handleAddBlock(BlockType.FLASHCARD)}
-            disabled={!hasActiveCard}
-          />
-          <ToolbarButton
-            icon={<PenLine className="w-4 h-4 text-emerald-600" />}
-            label="Fill Blank"
-            onClick={() => handleAddBlock(BlockType.FILL_BLANK)}
-            disabled={!hasActiveCard}
-          />
-        </div>
+        
+        <button
+          onClick={() => useDocumentStore.getState().undo()}
+          disabled={!canUndo}
+          className={cn(
+            "rounded-lg text-white transition-colors",
+            canUndo ? "hover:bg-white/10" : "opacity-50 cursor-not-allowed"
+          )}
+          title="Hoàn tác (Ctrl+Z)"
+        >
+          <Undo2 className="w-6 h-6" />
+        </button>
+        <button
+          onClick={() => useDocumentStore.getState().redo()}
+          disabled={!canRedo}
+          className={cn(
+            " rounded-lg text-white transition-colors",
+            canRedo ? "hover:bg-white/10" : "opacity-50 cursor-not-allowed"
+          )}
+          title="Làm lại (Ctrl+Y)"
+        >
+          <Redo2 className="w-6 h-6" />
+        </button>
       </div>
 
       {/* Right section - Actions */}
-      <div className="flex items-center gap-2">
-        {/* Present Button */}
+      <div className="flex items-center gap-4">
+        {/* Online Users */}
+        <div className="flex items-center -space-x-3">
+          {onlineUsers.slice(0, 3).map((user) => (
+            <div
+              key={user.id}
+              className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-semibold border-2 border-white shadow-sm",
+                user.color
+              )}
+              title={user.name}
+            >
+              {user.avatar}
+            </div>
+          ))}
+          {onlineUsers.length > 3 && (
+            <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-semibold border-2 border-white shadow-sm">
+              +{onlineUsers.length - 3}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={() => window.location.href = '/shop'}
+          className={cn(
+            'flex items-center gap-2.5 px-5 py-2.5 rounded-lg',
+            'bg-white/20 hover:bg-white/30 text-white',
+            'font-semibold text-base transition-colors'
+          )}
+          title="Shop"
+        >
+          <ShoppingBag className="w-5 h-5" />
+          Shop
+        </button>
+        
         <button
           onClick={startPresentation}
           disabled={!document || !document.cards.length}
           className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg',
-            'bg-indigo-500 hover:bg-indigo-600 text-white',
-            'font-medium text-sm transition-colors',
+            'flex items-center gap-2.5 px-5 py-2.5 rounded-lg',
+            'bg-white/20 hover:bg-white/30 text-white',
+            'font-semibold text-base transition-colors',
             'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
-          title="Start Presentation Mode"
+          title="Thuyết trình"
         >
-          <Play className="w-4 h-4" />
-          Present
+          <Play className="w-5 h-5" />
+          Thuyết trình
         </button>
         
-        <ToolbarDivider />
-        
-        <button
-          className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
-          title="Undo"
-        >
-          <Undo2 className="w-5 h-5" />
-        </button>
-        <button
-          className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
-          title="Redo"
-        >
-          <Redo2 className="w-5 h-5" />
-        </button>
-        <ToolbarDivider />
         <button
           onClick={() => {
             if (document) {
@@ -217,25 +203,14 @@ export function Toolbar() {
           }}
           disabled={!document}
           className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg',
-            'bg-emerald-500 hover:bg-emerald-600 text-white',
-            'font-medium text-sm transition-colors',
+            'flex items-center gap-2.5 px-5 py-2.5 rounded-lg',
+            'bg-white text-purple-600 hover:bg-gray-100',
+            'font-semibold text-base transition-colors shadow-sm',
             'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
-          title="Export as .eduvi file for Flutter Viewer"
+          title="Chia sẻ"
         >
-          <Download className="w-4 h-4" />
-          Export .eduvi
-        </button>
-        <button
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg',
-            'bg-primary-500 hover:bg-primary-600 text-white',
-            'font-medium text-sm transition-colors'
-          )}
-        >
-          <Save className="w-4 h-4" />
-          Save
+          Chia sẻ
         </button>
       </div>
     </header>

@@ -71,11 +71,15 @@ export function PresentationLayer() {
   const nextSlide = useDocumentStore((state) => state.nextSlide);
   const previousSlide = useDocumentStore((state) => state.previousSlide);
 
-  const [[page, direction], setPage] = React.useState([presentationSlideIndex, 0]);
+  const [direction, setDirection] = React.useState(0);
+  const prevIndexRef = React.useRef(presentationSlideIndex);
 
-  // Sync with store
+  // Track direction based on slide index changes
   useEffect(() => {
-    setPage([presentationSlideIndex, presentationSlideIndex > page ? 1 : -1]);
+    if (prevIndexRef.current !== presentationSlideIndex) {
+      setDirection(presentationSlideIndex > prevIndexRef.current ? 1 : -1);
+      prevIndexRef.current = presentationSlideIndex;
+    }
   }, [presentationSlideIndex]);
 
   // Keyboard navigation
@@ -113,6 +117,17 @@ export function PresentationLayer() {
   const totalSlides = document.cards.length;
   const canGoBack = presentationSlideIndex > 0;
   const canGoForward = presentationSlideIndex < totalSlides - 1;
+
+  // Debug logging
+  console.log('Presentation Debug:', {
+    presentationSlideIndex,
+    totalSlides,
+    currentCard: currentCard ? {
+      id: currentCard.id,
+      title: currentCard.title,
+      childrenCount: currentCard.children?.length || 0,
+    } : null,
+  });
 
   return (
     <AnimatePresence>
@@ -153,7 +168,7 @@ export function PresentationLayer() {
           <div className="flex-1 flex items-center justify-center p-8 pt-20 pb-20">
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
-                key={currentCard?.id || page}
+                key={currentCard?.id}
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
@@ -169,7 +184,7 @@ export function PresentationLayer() {
                   'max-h-[calc(100vh-12rem)]'
                 )}
               >
-                {currentCard && (
+                {currentCard ? (
                   <div className="p-8 overflow-y-auto max-h-[calc(100vh-12rem)]">
                     {/* Slide Title */}
                     <h2 className="text-2xl font-bold text-gray-800 mb-6 pb-4 border-b border-gray-100">
@@ -178,14 +193,24 @@ export function PresentationLayer() {
 
                     {/* Slide Content */}
                     <div className="space-y-6">
-                      {currentCard.children.map((child) => (
-                        <NodeRenderer
-                          key={child.id}
-                          node={child}
-                          depth={0}
-                        />
-                      ))}
+                      {currentCard.children && currentCard.children.length > 0 ? (
+                        currentCard.children.map((child) => (
+                          <NodeRenderer
+                            key={child.id}
+                            node={child}
+                            depth={0}
+                          />
+                        ))
+                      ) : (
+                        <div className="text-center text-gray-400 py-12">
+                          <p className="text-lg">Slide này chưa có nội dung</p>
+                        </div>
+                      )}
                     </div>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-gray-400">
+                    <p className="text-lg">Không tìm thấy slide</p>
                   </div>
                 )}
               </motion.div>

@@ -105,31 +105,115 @@ function SortableNode({ node, depth = 0, children }: SortableNodeProps) {
         isDragging && 'opacity-50 z-50'
       )}
     >
-      {/* Drag handle and actions - only show for blocks and layouts */}
-      {depth > 0 && (
+      {/* Floating toolbar modal - appears above the element when hovered/selected */}
+      {depth > 0 && (isSelected || true) && (
         <div
           className={cn(
-            'absolute -left-8 top-1/2 -translate-y-1/2',
-            'flex items-center gap-1',
+            'absolute -top-12 left-1/2 -translate-x-1/2 z-50',
+            'flex items-center gap-1 px-2 py-1.5',
+            'bg-white rounded-lg shadow-lg border border-gray-200',
             'opacity-0 group-hover:opacity-100',
-            'transition-opacity duration-150'
+            isSelected && 'opacity-100',
+            'transition-opacity duration-200'
           )}
         >
           <button
             {...attributes}
             {...listeners}
-            className="p-1 rounded hover:bg-gray-200 cursor-grab active:cursor-grabbing"
-            title="Drag to reorder"
+            className="p-1.5 rounded hover:bg-gray-100 cursor-grab active:cursor-grabbing transition-colors"
+            title="Di chuyển"
           >
-            <GripVertical className="w-4 h-4 text-gray-400" />
+            <GripVertical className="w-4 h-4 text-gray-600" />
           </button>
+          
+          <div className="w-px h-5 bg-gray-200 mx-0.5" />
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const activeCard = useDocumentStore.getState().activeCardId;
+              if (activeCard) {
+                useDocumentStore.getState().addBlockToCard(activeCard, BlockType.HEADING);
+              }
+            }}
+            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+            title="Thêm Heading"
+          >
+            <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const activeCard = useDocumentStore.getState().activeCardId;
+              if (activeCard) {
+                useDocumentStore.getState().addBlockToCard(activeCard, BlockType.TEXT);
+              }
+            }}
+            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+            title="Thêm Text"
+          >
+            <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const activeCard = useDocumentStore.getState().activeCardId;
+              if (activeCard) {
+                useDocumentStore.getState().addBlockToCard(activeCard, BlockType.IMAGE);
+              }
+            }}
+            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+            title="Thêm Image"
+          >
+            <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const activeCard = useDocumentStore.getState().activeCardId;
+              if (activeCard) {
+                useDocumentStore.getState().addBlockToCard(activeCard, BlockType.VIDEO);
+              }
+            }}
+            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+            title="Thêm Video"
+          >
+            <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+          
+          <div className="w-px h-5 bg-gray-200 mx-0.5" />
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // Copy action
+            }}
+            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+            title="Sao chép"
+          >
+            <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+          
           <button
             onClick={(e) => {
               e.stopPropagation();
               deleteNode(node.id);
             }}
-            className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
-            title="Delete"
+            className="p-1.5 rounded hover:bg-red-50 text-gray-600 hover:text-red-500 transition-colors"
+            title="Xóa"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -475,16 +559,32 @@ function getGridClasses(variant: LayoutVariant, gap: number = 4): string {
  * Acts as the main container for a slide's content.
  */
 function CardRenderer({ node }: { node: ICard }) {
+  const childCount = node.children.length;
+  
+  // Make the card a droppable zone for materials
+  const { isOver, setNodeRef } = useDroppable({
+    id: `card-${node.id}`,
+    data: {
+      type: 'CARD',
+      cardId: node.id,
+      accepts: ['MATERIAL'],
+    },
+  });
+  
   return (
     <div
+      ref={setNodeRef}
       className={cn(
-        'w-full min-h-[600px]',
-        'flex flex-col gap-6',
+        'w-full h-[600px]',
+        'flex flex-col',
         'p-8 md:p-12',
+        'overflow-hidden',
         // Card styling
         'bg-white rounded-2xl shadow-stage',
         // Smooth transitions for layout shifts
-        'transition-all duration-300 ease-out'
+        'transition-all duration-300 ease-out',
+        // Drop indicator
+        isOver && 'ring-4 ring-indigo-400 ring-inset'
       )}
       style={{
         backgroundColor: node.backgroundColor || undefined,
@@ -496,16 +596,27 @@ function CardRenderer({ node }: { node: ICard }) {
       }}
     >
       {/* Render children (layouts and blocks) */}
-      {node.children.map((child) => (
-        <SortableNode key={child.id} node={child as INode} depth={1}>
-          <NodeRenderer node={child as INode} depth={1} />
-        </SortableNode>
+      {node.children.map((child, index) => (
+        <div 
+          key={child.id}
+          className={cn(
+            'flex-shrink-0',
+            index < childCount - 1 && 'mb-6'
+          )}
+        >
+          <SortableNode node={child as INode} depth={1}>
+            <NodeRenderer node={child as INode} depth={1} />
+          </SortableNode>
+        </div>
       ))}
 
       {/* Empty state */}
       {node.children.length === 0 && (
         <div className="flex-1 flex items-center justify-center text-gray-400">
-          <p>This slide is empty. Add some content using the toolbar above.</p>
+          <div className="text-center">
+            <p className="mb-2">This slide is empty. Add some content using the toolbar above.</p>
+            {isOver && <p className="text-indigo-600 font-semibold">Drop material here</p>}
+          </div>
         </div>
       )}
     </div>

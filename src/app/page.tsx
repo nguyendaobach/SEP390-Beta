@@ -51,7 +51,7 @@ import { IMaterial } from '@/types';
 import { Package } from 'lucide-react';
 
 /**
- * Custom collision detection that prefers layout columns over other targets
+ * Custom collision detection that prefers layout columns over card
  */
 const customCollisionDetection: CollisionDetection = (args) => {
   // First, check for layout column collisions using pointer
@@ -64,6 +64,15 @@ const customCollisionDetection: CollisionDetection = (args) => {
   
   if (columnCollision) {
     return [columnCollision];
+  }
+  
+  // Check for card collision as fallback
+  const cardCollision = pointerCollisions.find(
+    (collision) => collision.data?.droppableContainer?.data?.current?.type === 'CARD'
+  );
+  
+  if (cardCollision) {
+    return [cardCollision];
   }
   
   // Fall back to rect intersection for other collisions
@@ -120,11 +129,18 @@ export default function EditorPage() {
     if (dragData?.type === 'MATERIAL') {
       const material = dragData.material as IMaterial;
       
-      // Check if dropped on a layout column
+      // Check if dropped on a layout column (highest priority)
       if (over.data.current?.type === 'LAYOUT_COLUMN') {
         const layoutId = over.data.current.layoutId as string;
         const columnIndex = over.data.current.columnIndex as number;
         dropMaterial(layoutId, material, columnIndex);
+        return;
+      }
+      
+      // Check if dropped on a card directly
+      if (over.data.current?.type === 'CARD') {
+        const cardId = over.data.current.cardId as string;
+        dropMaterial(cardId, material);
         return;
       }
       
@@ -135,7 +151,7 @@ export default function EditorPage() {
         return;
       }
       
-      // Otherwise drop into the active card
+      // Otherwise drop into the active card as fallback
       if (activeCardId) {
         dropMaterial(activeCardId, material);
       }
