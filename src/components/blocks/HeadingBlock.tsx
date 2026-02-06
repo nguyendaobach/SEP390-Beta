@@ -6,6 +6,7 @@
  * 
  * Displays a heading with configurable level (H1-H6).
  * Editable inline with automatic font sizing.
+ * Updates are debounced to avoid excessive history entries.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -38,6 +39,7 @@ export function HeadingBlock({
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(content.text);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const updateBlockContent = useDocumentStore((state) => state.updateBlockContent);
 
   useEffect(() => {
@@ -51,8 +53,23 @@ export function HeadingBlock({
     setText(content.text);
   }, [content.text]);
 
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSave = () => {
     setIsEditing(false);
+    
+    // Clear any pending debounce
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
     if (text !== content.text) {
       updateBlockContent(id, {
         type: BlockType.HEADING,
@@ -60,6 +77,25 @@ export function HeadingBlock({
         level: content.level,
       });
     }
+  };
+
+  const handleChange = (newText: string) => {
+    setText(newText);
+    
+    // Debounce updates while typing
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    debounceTimerRef.current = setTimeout(() => {
+      if (newText !== content.text) {
+        updateBlockContent(id, {
+          type: BlockType.HEADING,
+          text: newText,
+          level: content.level,
+        });
+      }
+    }, 500);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -92,7 +128,7 @@ export function HeadingBlock({
           ref={inputRef}
           type="text"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
           className={cn(

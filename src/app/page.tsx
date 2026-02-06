@@ -40,6 +40,7 @@ import {
   KeyboardSensor,
   pointerWithin,
   rectIntersection,
+  closestCenter,
   CollisionDetection,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -51,10 +52,24 @@ import { IMaterial } from '@/types';
 import { Package } from 'lucide-react';
 
 /**
- * Custom collision detection that prefers layout columns over card
+ * Custom collision detection
+ * Priority:
+ * 1. Sortable items (when dragging blocks) - use closestCenter for smooth reordering
+ * 2. Layout columns (when dropping materials)
+ * 3. Cards (fallback for material drops)
  */
 const customCollisionDetection: CollisionDetection = (args) => {
-  // First, check for layout column collisions using pointer
+  const { active } = args;
+  
+  // Check if we're dragging a sortable block (not a material)
+  const isDraggingBlock = !active.data.current?.material;
+  
+  // For sortable blocks, use closestCenter for smooth reordering (like sidebar)
+  if (isDraggingBlock) {
+    return closestCenter(args);
+  }
+  
+  // For materials: check for layout column collisions using pointer
   const pointerCollisions = pointerWithin(args);
   
   // If we have a layout column collision, prioritize it
@@ -110,7 +125,8 @@ export default function EditorPage() {
     const { active } = event;
     const dragData = active.data.current;
 
-    if (dragData?.type === 'MATERIAL') {
+    // Only track materials for drag overlay
+    if (dragData?.material) {
       setActiveDragItem(dragData.material as IMaterial);
     }
   };
@@ -125,8 +141,11 @@ export default function EditorPage() {
 
     if (!over) return;
 
-    // Handle material drop
-    if (dragData?.type === 'MATERIAL') {
+    // Check if this is a material drop
+    const isMaterialDrag = dragData?.material;
+
+    if (isMaterialDrag) {
+      // Handle material drop
       const material = dragData.material as IMaterial;
       
       // Check if dropped on a layout column (highest priority)
@@ -155,12 +174,11 @@ export default function EditorPage() {
       if (activeCardId) {
         dropMaterial(activeCardId, material);
       }
-      return;
-    }
-
-    // Handle sortable reordering (for blocks within cards)
-    if (active.id !== over.id && activeCardId) {
-      reorderNodesInCard(activeCardId, active.id as string, over.id as string);
+    } else {
+      // Handle sortable block reordering (same logic as sidebar slides)
+      if (active.id !== over.id && activeCardId) {
+        reorderNodesInCard(activeCardId, active.id as string, over.id as string);
+      }
     }
   };
 

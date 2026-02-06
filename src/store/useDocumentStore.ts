@@ -292,11 +292,21 @@ export const useDocumentStore = create<DocumentState>()(
     subscribeWithSelector((set, get) => {
       // Helper function to update document with history tracking
       const setDocumentWithHistory = (newDoc: IDocument, otherUpdates: Partial<Omit<DocumentState, 'document' | 'history' | 'historyIndex'>> = {}) => {
-        const { history, historyIndex } = get();
+        const { document: currentDoc, history, historyIndex } = get();
         
-        // Add to history (remove any future history if we're not at the end)
+        // Remove any future history if we're not at the end (for redo support)
         const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(deepClone(newDoc));
+        
+        // Add CURRENT document to history ONLY if it's different from the NEW document
+        if (currentDoc) {
+          const currentDocJson = JSON.stringify(currentDoc);
+          const newDocJson = JSON.stringify(newDoc);
+          
+          // Only add to history if the document has actually changed
+          if (currentDocJson !== newDocJson) {
+            newHistory.push(deepClone(currentDoc));
+          }
+        }
         
         // Limit history to 50 items
         if (newHistory.length > 50) {
@@ -412,9 +422,14 @@ export const useDocumentStore = create<DocumentState>()(
           
           const data: IDocument = await response.json();
           
+          // Initialize history with the loaded document
+          const newHistory = [deepClone(data)];
+          
           set({
             document: data,
             activeCardId: data.activeCardId || data.cards[0]?.id || null,
+            history: newHistory,
+            historyIndex: 0,
             isLoading: false,
           });
         } catch (err) {
@@ -426,17 +441,14 @@ export const useDocumentStore = create<DocumentState>()(
       },
 
       setDocument: (doc: IDocument) => {
-        const { history, historyIndex } = get();
-        
-        // Add to history
-        const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(deepClone(doc));
+        // Initialize history with the document
+        const newHistory = [deepClone(doc)];
         
         set({
           document: doc,
           activeCardId: doc.activeCardId || doc.cards[0]?.id || null,
           history: newHistory,
-          historyIndex: newHistory.length - 1,
+          historyIndex: 0,
         });
       },
 
@@ -668,15 +680,15 @@ export const useDocumentStore = create<DocumentState>()(
         const { document } = get();
         if (!document) return;
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) =>
-              card.id === cardId ? { ...card, title } : card
-            ),
-            updatedAt: new Date().toISOString(),
-          },
-        });
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) =>
+            card.id === cardId ? { ...card, title } : card
+          ),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc);
       },
 
       // ======================================================================
@@ -784,28 +796,28 @@ export const useDocumentStore = create<DocumentState>()(
         const { document } = get();
         if (!document) return;
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) => ({
-              ...card,
-              children: updateNodeInTree<ILayout | IBlock>(
-                card.children,
-                blockId,
-                (node) => {
-                  if (isBlock(node)) {
-                    return {
-                      ...node,
-                      styles: { ...node.styles, ...styles },
-                    };
-                  }
-                  return node;
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) => ({
+            ...card,
+            children: updateNodeInTree<ILayout | IBlock>(
+              card.children,
+              blockId,
+              (node) => {
+                if (isBlock(node)) {
+                  return {
+                    ...node,
+                    styles: { ...node.styles, ...styles },
+                  };
                 }
-              ),
-            })),
-            updatedAt: new Date().toISOString(),
-          },
-        });
+                return node;
+              }
+            ),
+          })),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc);
       },
 
       // ======================================================================
@@ -842,73 +854,75 @@ export const useDocumentStore = create<DocumentState>()(
         
         if (targetCard) {
           // Drop directly into card
-          set({
-            document: {
-              ...document,
-              cards: document.cards.map((card) =>
-                card.id === parentId
-                  ? { ...card, children: [...card.children, newBlock] }
-                  : card
-              ),
-              updatedAt: new Date().toISOString(),
-            },
+          const newDoc = {
+            ...document,
+            cards: document.cards.map((card) =>
+              card.id === parentId
+                ? { ...card, children: [...card.children, newBlock] }
+                : card
+            ),
+            updatedAt: new Date().toISOString(),
+          };
+          
+          setDocumentWithHistory(newDoc, {
             selectedNodeId: newBlock.id,
           });
           return;
         }
 
         // Otherwise, try to find a layout with this ID and add to specific column
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) => ({
-              ...card,
-              children: updateNodeInTree<ILayout | IBlock>(
-                card.children,
-                parentId,
-                (node) => {
-                  if (isLayout(node)) {
-                    // If columnIndex is specified, insert at position to maintain column order
-                    if (columnIndex !== undefined) {
-                      const columnCount = getColumnCountForVariant(node.variant);
-                      // Calculate insert position to place in correct column
-                      // Items are distributed: item 0 -> col 0, item 1 -> col 1, item 2 -> col 0, etc.
-                      const currentColCounts = Array(columnCount).fill(0);
-                      node.children.forEach((_, idx) => {
-                        currentColCounts[idx % columnCount]++;
-                      });
-                      
-                      // Find the position where we need to insert to add to the target column
-                      // New item should go at: (currentColCounts[columnIndex] * columnCount) + columnIndex
-                      let insertPosition = 0;
-                      for (let i = 0; i < node.children.length; i++) {
-                        if (i % columnCount === columnIndex) {
-                          insertPosition = i + columnCount; // After the last item in this column
-                        }
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) => ({
+            ...card,
+            children: updateNodeInTree<ILayout | IBlock>(
+              card.children,
+              parentId,
+              (node) => {
+                if (isLayout(node)) {
+                  // If columnIndex is specified, insert at position to maintain column order
+                  if (columnIndex !== undefined) {
+                    const columnCount = getColumnCountForVariant(node.variant);
+                    // Calculate insert position to place in correct column
+                    // Items are distributed: item 0 -> col 0, item 1 -> col 1, item 2 -> col 0, etc.
+                    const currentColCounts = Array(columnCount).fill(0);
+                    node.children.forEach((_, idx) => {
+                      currentColCounts[idx % columnCount]++;
+                    });
+                    
+                    // Find the position where we need to insert to add to the target column
+                    // New item should go at: (currentColCounts[columnIndex] * columnCount) + columnIndex
+                    let insertPosition = 0;
+                    for (let i = 0; i < node.children.length; i++) {
+                      if (i % columnCount === columnIndex) {
+                        insertPosition = i + columnCount; // After the last item in this column
                       }
-                      // If column is empty, insert at columnIndex position
-                      if (currentColCounts[columnIndex] === 0) {
-                        insertPosition = columnIndex;
-                      } else {
-                        insertPosition = Math.min(insertPosition, node.children.length);
-                      }
-                      
-                      const newChildren = [...node.children];
-                      newChildren.splice(insertPosition, 0, newBlock);
-                      return { ...node, children: newChildren };
+                    }
+                    // If column is empty, insert at columnIndex position
+                    if (currentColCounts[columnIndex] === 0) {
+                      insertPosition = columnIndex;
+                    } else {
+                      insertPosition = Math.min(insertPosition, node.children.length);
                     }
                     
-                    return {
-                      ...node,
-                      children: [...node.children, newBlock],
-                    };
+                    const newChildren = [...node.children];
+                    newChildren.splice(insertPosition, 0, newBlock);
+                    return { ...node, children: newChildren };
                   }
-                  return node;
+                  
+                  return {
+                    ...node,
+                    children: [...node.children, newBlock],
+                  };
                 }
-              ),
-            })),
-            updatedAt: new Date().toISOString(),
-          },
+                return node;
+              }
+            ),
+          })),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        setDocumentWithHistory(newDoc, {
           selectedNodeId: newBlock.id,
         });
       },
@@ -948,16 +962,17 @@ export const useDocumentStore = create<DocumentState>()(
           children: blocks,
         };
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) =>
-              card.id === cardId
-                ? { ...card, children: [...card.children, newLayout] }
-                : card
-            ),
-            updatedAt: new Date().toISOString(),
-          },
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) =>
+            card.id === cardId
+              ? { ...card, children: [...card.children, newLayout] }
+              : card
+          ),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        setDocumentWithHistory(newDoc, {
           selectedNodeId: newLayout.id,
         });
       },
@@ -973,43 +988,43 @@ export const useDocumentStore = create<DocumentState>()(
         const { document } = get();
         if (!document || blockIds.length < 2) return;
 
-        set({
-          document: {
-            ...document,
-            cards: document.cards.map((card) => {
-              if (card.id !== cardId) return card;
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) => {
+            if (card.id !== cardId) return card;
 
-              // Find blocks to wrap
-              const blocksToWrap: (ILayout | IBlock)[] = [];
-              const remainingChildren: (ILayout | IBlock)[] = [];
+            // Find blocks to wrap
+            const blocksToWrap: (ILayout | IBlock)[] = [];
+            const remainingChildren: (ILayout | IBlock)[] = [];
 
-              card.children.forEach((child) => {
-                if (blockIds.includes(child.id)) {
-                  blocksToWrap.push(child);
-                } else {
-                  remainingChildren.push(child);
-                }
-              });
+            card.children.forEach((child) => {
+              if (blockIds.includes(child.id)) {
+                blocksToWrap.push(child);
+              } else {
+                remainingChildren.push(child);
+              }
+            });
 
-              if (blocksToWrap.length < 2) return card;
+            if (blocksToWrap.length < 2) return card;
 
-              // Create wrapper layout
-              const wrapperLayout: ILayout = {
-                id: `layout-${uuidv4()}`,
-                type: NodeType.LAYOUT,
-                variant,
-                gap: 4,
-                children: blocksToWrap,
-              };
+            // Create wrapper layout
+            const wrapperLayout: ILayout = {
+              id: `layout-${uuidv4()}`,
+              type: NodeType.LAYOUT,
+              variant,
+              gap: 4,
+              children: blocksToWrap,
+            };
 
-              return {
-                ...card,
-                children: [...remainingChildren, wrapperLayout],
-              };
-            }),
-            updatedAt: new Date().toISOString(),
-          },
-        });
+            return {
+              ...card,
+              children: [...remainingChildren, wrapperLayout],
+            };
+          }),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        setDocumentWithHistory(newDoc);
       },
 
       // ======================================================================

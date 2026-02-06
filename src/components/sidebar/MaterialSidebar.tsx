@@ -20,6 +20,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { useDocumentStore } from '@/store';
 import { IMaterial, MaterialCategory, LayoutVariant } from '@/types';
+import { Modal } from '@/components/common/Modal';
 import * as LucideIcons from 'lucide-react';
 import { 
   Loader2, 
@@ -31,6 +32,7 @@ import {
   Columns2,
   Columns3,
   LayoutGrid,
+  Sparkles,
 } from 'lucide-react';
 
 // ============================================================================
@@ -378,70 +380,159 @@ export function MaterialSidebar({ className }: MaterialSidebarProps) {
 // ============================================================================
 
 function QuickLayoutSection() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const activeCardId = useDocumentStore((state) => state.activeCardId);
   const addLayoutToCard = useDocumentStore((state) => state.addLayoutToCard);
 
   const handleAddLayout = (variant: LayoutVariant) => {
     if (activeCardId) {
       addLayoutToCard(activeCardId, variant);
+      setIsModalOpen(false);
     }
   };
 
+  // Layout template definitions
+  const layoutTemplates = {
+    basic: [
+      {
+        variant: LayoutVariant.SINGLE,
+        label: 'Blank card',
+        preview: (
+          <div className="w-full h-full bg-gray-50 rounded border border-gray-200" />
+        ),
+      },
+      {
+        variant: LayoutVariant.TWO_COLUMN,
+        label: 'Two columns',
+        preview: (
+          <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
+            <div className="flex-1 bg-gray-100 rounded" />
+            <div className="flex-1 bg-gray-100 rounded" />
+          </div>
+        ),
+      },
+      {
+        variant: LayoutVariant.THREE_COLUMN,
+        label: 'Three columns',
+        preview: (
+          <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
+            <div className="flex-1 bg-gray-100 rounded" />
+            <div className="flex-1 bg-gray-100 rounded" />
+            <div className="flex-1 bg-gray-100 rounded" />
+          </div>
+        ),
+      },
+      {
+        variant: LayoutVariant.SIDEBAR_LEFT,
+        label: 'Sidebar left',
+        preview: (
+          <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
+            <div className="w-1/3 bg-gray-100 rounded" />
+            <div className="flex-1 bg-gray-100 rounded" />
+          </div>
+        ),
+      },
+      {
+        variant: LayoutVariant.SIDEBAR_RIGHT,
+        label: 'Sidebar right',
+        preview: (
+          <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
+            <div className="flex-1 bg-gray-100 rounded" />
+            <div className="w-1/3 bg-gray-100 rounded" />
+          </div>
+        ),
+      },
+    ],
+  };
+
   return (
-    <div className="p-3 border-t border-gray-200 bg-white">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-        Quick Layouts
-      </p>
-      <div className="grid grid-cols-3 gap-2">
+    <>
+      <div className="p-3 border-t border-gray-200 bg-white">
         <button
-          onClick={() => handleAddLayout(LayoutVariant.TWO_COLUMN)}
+          onClick={() => setIsModalOpen(true)}
           disabled={!activeCardId}
           className={cn(
-            'flex flex-col items-center gap-1 p-2 rounded-lg border',
-            'transition-all duration-150',
+            'w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg',
+            'font-medium text-sm transition-all duration-150',
             activeCardId
-              ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600'
-              : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+              ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           )}
-          title="Add 2-column layout"
         >
-          <Columns2 className="w-5 h-5" />
-          <span className="text-[10px] font-medium">2 Cols</span>
-        </button>
-
-        <button
-          onClick={() => handleAddLayout(LayoutVariant.THREE_COLUMN)}
-          disabled={!activeCardId}
-          className={cn(
-            'flex flex-col items-center gap-1 p-2 rounded-lg border',
-            'transition-all duration-150',
-            activeCardId
-              ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600'
-              : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
-          )}
-          title="Add 3-column layout"
-        >
-          <Columns3 className="w-5 h-5" />
-          <span className="text-[10px] font-medium">3 Cols</span>
-        </button>
-
-        <button
-          onClick={() => handleAddLayout(LayoutVariant.SIDEBAR_LEFT)}
-          disabled={!activeCardId}
-          className={cn(
-            'flex flex-col items-center gap-1 p-2 rounded-lg border',
-            'transition-all duration-150',
-            activeCardId
-              ? 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600'
-              : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
-          )}
-          title="Add sidebar layout"
-        >
-          <LayoutGrid className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Sidebar</span>
+          <Sparkles className="w-4 h-4" />
+          Quick Layouts
         </button>
       </div>
-    </div>
+
+      {/* Layout Templates Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Card template"
+        size="xl"
+        bodyClassName="p-0"
+        className="max-w-4xl"
+      >
+        <div className="max-h-[70vh] overflow-y-auto">
+          {/* Basic Section */}
+          <div className="px-6 py-4">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-sm font-medium text-gray-700">Basic</h3>
+            </div>
+            
+            <div className="grid grid-cols-4 gap-4">
+              {layoutTemplates.basic.map((template, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleAddLayout(template.variant)}
+                  disabled={!activeCardId}
+                  className={cn(
+                    'flex flex-col gap-2 p-0 rounded-lg',
+                    'transition-all duration-150',
+                    'hover:scale-[1.02]',
+                    !activeCardId && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  {/* Template Preview */}
+                  <div
+                    className={cn(
+                      'aspect-[4/3] w-full rounded-lg overflow-hidden',
+                      'border-2 transition-all duration-150',
+                      activeCardId
+                        ? 'border-gray-200 hover:border-indigo-400 hover:shadow-md'
+                        : 'border-gray-100'
+                    )}
+                  >
+                    {template.preview}
+                  </div>
+                  
+                  {/* Template Label */}
+                  <span
+                    className={cn(
+                      'text-xs text-center px-1',
+                      activeCardId ? 'text-gray-700' : 'text-gray-400'
+                    )}
+                  >
+                    {template.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Info Section */}
+          {!activeCardId && (
+            <div className="px-6 pb-6">
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  <strong>Note:</strong> Please select a slide first to apply a template.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+    </>
   );
 }
 

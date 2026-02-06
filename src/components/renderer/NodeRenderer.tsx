@@ -48,7 +48,7 @@ import { TextBlock, HeadingBlock, ImageBlock, VideoBlock } from '@/components/bl
 import { ResizableBlockWrapper } from '@/components/blocks/ResizableBlockWrapper';
 import { renderWidget } from '@/components/widgets';
 import { QuizBlock, FlashcardBlock, FillInBlankBlock } from '@/components/interactive';
-import { useSortable } from '@dnd-kit/sortable';
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, Plus } from 'lucide-react';
@@ -105,15 +105,13 @@ function SortableNode({ node, depth = 0, children }: SortableNodeProps) {
         isDragging && 'opacity-50 z-50'
       )}
     >
-      {/* Floating toolbar modal - appears above the element when hovered/selected */}
-      {depth > 0 && (isSelected || true) && (
+      {/* Block toolbar - appears when block is selected (not when editing content inside) */}
+      {depth > 0 && isSelected && (
         <div
           className={cn(
             'absolute -top-12 left-1/2 -translate-x-1/2 z-50',
             'flex items-center gap-1 px-2 py-1.5',
             'bg-white rounded-lg shadow-lg border border-gray-200',
-            'opacity-0 group-hover:opacity-100',
-            isSelected && 'opacity-100',
             'transition-opacity duration-200'
           )}
         >
@@ -197,7 +195,7 @@ function SortableNode({ node, depth = 0, children }: SortableNodeProps) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // Copy action
+              // Copy action - TODO: implement
             }}
             className="p-1.5 rounded hover:bg-gray-100 transition-colors"
             title="Sao chép"
@@ -257,45 +255,83 @@ function BlockRenderer({ node }: { node: IBlock }) {
   // Render based on content type
   if (isTextContent(content)) {
     return (
-      <TextBlock
+      <ResizableBlockWrapper
         id={node.id}
-        content={content}
+        styles={styles}
         isSelected={isSelected}
-        onSelect={handleSelect}
-      />
+        onStyleChange={handleStyleChange}
+        onClick={handleSelect}
+        minHeight={30}
+      >
+        <TextBlock
+          id={node.id}
+          content={content}
+          isSelected={isSelected}
+          onSelect={handleSelect}
+        />
+      </ResizableBlockWrapper>
     );
   }
 
   if (isHeadingContent(content)) {
     return (
-      <HeadingBlock
+      <ResizableBlockWrapper
         id={node.id}
-        content={content}
+        styles={styles}
         isSelected={isSelected}
-        onSelect={handleSelect}
-      />
+        onStyleChange={handleStyleChange}
+        onClick={handleSelect}
+        minHeight={30}
+      >
+        <HeadingBlock
+          id={node.id}
+          content={content}
+          isSelected={isSelected}
+          onSelect={handleSelect}
+        />
+      </ResizableBlockWrapper>
     );
   }
 
   if (isImageContent(content)) {
     return (
-      <ImageBlock
+      <ResizableBlockWrapper
         id={node.id}
-        content={content}
+        styles={styles}
         isSelected={isSelected}
-        onSelect={handleSelect}
-      />
+        onStyleChange={handleStyleChange}
+        onClick={handleSelect}
+        maintainAspectRatio={true}
+        minHeight={100}
+      >
+        <ImageBlock
+          id={node.id}
+          content={content}
+          isSelected={isSelected}
+          onSelect={handleSelect}
+        />
+      </ResizableBlockWrapper>
     );
   }
 
   if (isVideoContent(content)) {
     return (
-      <VideoBlock
+      <ResizableBlockWrapper
         id={node.id}
-        content={content}
+        styles={styles}
         isSelected={isSelected}
-        onSelect={handleSelect}
-      />
+        onStyleChange={handleStyleChange}
+        onClick={handleSelect}
+        maintainAspectRatio={true}
+        minHeight={200}
+      >
+        <VideoBlock
+          id={node.id}
+          content={content}
+          isSelected={isSelected}
+          onSelect={handleSelect}
+        />
+      </ResizableBlockWrapper>
     );
   }
 
@@ -571,6 +607,9 @@ function CardRenderer({ node }: { node: ICard }) {
     },
   });
   
+  // Get child IDs for SortableContext
+  const childIds = node.children.map(child => child.id);
+  
   return (
     <div
       ref={setNodeRef}
@@ -595,20 +634,23 @@ function CardRenderer({ node }: { node: ICard }) {
         backgroundPosition: 'center',
       }}
     >
-      {/* Render children (layouts and blocks) */}
-      {node.children.map((child, index) => (
-        <div 
-          key={child.id}
-          className={cn(
-            'flex-shrink-0',
-            index < childCount - 1 && 'mb-6'
-          )}
-        >
-          <SortableNode node={child as INode} depth={1}>
-            <NodeRenderer node={child as INode} depth={1} />
-          </SortableNode>
-        </div>
-      ))}
+      {/* Wrap children in SortableContext for drag and drop */}
+      <SortableContext items={childIds} strategy={verticalListSortingStrategy}>
+        {/* Render children (layouts and blocks) */}
+        {node.children.map((child, index) => (
+          <div 
+            key={child.id}
+            className={cn(
+              'flex-shrink-0',
+              index < childCount - 1 && 'mb-6'
+            )}
+          >
+            <SortableNode node={child as INode} depth={1}>
+              <NodeRenderer node={child as INode} depth={1} />
+            </SortableNode>
+          </div>
+        ))}
+      </SortableContext>
 
       {/* Empty state */}
       {node.children.length === 0 && (

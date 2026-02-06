@@ -9,19 +9,25 @@
  * and pushes siblings down using standard CSS flow.
  * 
  * Features:
- * - Rich text editing (bold, italic, lists, etc.)
+ * - Rich text editing (bold, italic, underline, color, alignment, etc.)
  * - Auto-growing height (no fixed height)
  * - Placeholder text for empty blocks
- * - Content sync with Zustand store
+ * - Floating toolbar when editing
+ * - Content sync with Zustand store (debounced for performance)
  */
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import Color from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
 import { cn } from '@/lib/utils';
 import { useDocumentStore } from '@/store';
 import { BlockType, ITextContent } from '@/types';
+import { FloatingTextToolbar } from './FloatingTextToolbar';
 
 interface TextBlockProps {
   id: string;
@@ -37,6 +43,8 @@ export function TextBlock({
   onSelect,
 }: TextBlockProps) {
   const updateBlockContent = useDocumentStore((state) => state.updateBlockContent);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [showToolbar, setShowToolbar] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -49,6 +57,12 @@ export function TextBlock({
         placeholder: 'Start typing...',
         emptyEditorClass: 'is-editor-empty',
       }),
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      TextStyle,
+      Color,
     ],
     content: content.html,
     editorProps: {
@@ -69,17 +83,46 @@ export function TextBlock({
       },
     },
     onUpdate: ({ editor }) => {
-      // Sync content to store on every update
-      const html = editor.getHTML();
-      updateBlockContent(id, {
-        type: BlockType.TEXT,
-        html,
-      });
+      // Debounce content updates to avoid creating too many history entries
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      debounceTimerRef.current = setTimeout(() => {
+        const html = editor.getHTML();
+        updateBlockContent(id, {
+          type: BlockType.TEXT,
+          html,
+        });
+      }, 500); // Wait 500ms after user stops typing
     },
     onFocus: () => {
+      // Don't show toolbar on focus, only when there's selection
       onSelect?.();
     },
+    onSelectionUpdate: ({ editor }) => {
+      // Show toolbar ONLY when there's a text selection (not just cursor)
+      const { from, to } = editor.state.selection;
+      const hasSelection = from !== to;
+      
+      setShowToolbar(hasSelection);
+    },
+    onBlur: () => {
+      // Hide toolbar when clicking away (unless clicking on toolbar itself)
+      setTimeout(() => {
+        setShowToolbar(false);
+      }, 150);
+    },
   });
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Update editor content when prop changes (e.g., undo/redo)
   useEffect(() => {
@@ -91,13 +134,21 @@ export function TextBlock({
   return (
     <div
       className={cn(
-        'relative group',
-        'transition-all duration-200',
-        // Selection state
-        isSelected && 'ring-2 ring-primary-500 ring-offset-2 rounded-lg'
+        'relative',
+        'transition-all duration-200'
       )}
-      onClick={onSelect}
+      onClick={(e) => {
+        // Only select block if clicking outside the editor content
+        if (e.target === e.currentTarget) {
+          onSelect?.();
+        }
+      }}
     >
+      {/* Floating Text Toolbar - shows when editing or has selection */}
+      {editor && showToolbar && (
+        <FloatingTextToolbar editor={editor} show={showToolbar} />
+      )}
+
       <EditorContent
         editor={editor}
         className={cn(
@@ -106,42 +157,10 @@ export function TextBlock({
           'rounded-lg',
           'bg-white',
           'hover:bg-gray-50/50',
-          'transition-colors duration-150'
+          'transition-colors duration-150',
+          isSelected && !showToolbar && 'ring-2 ring-primary-500 ring-offset-2'
         )}
       />
-      
-      {/* Formatting toolbar hint */}
-      {isSelected && editor && (
-        <div className="absolute -top-8 left-0 flex gap-1 bg-white shadow-md rounded-md px-2 py-1 text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            className={cn(
-              'px-2 py-1 rounded hover:bg-gray-100',
-              editor.isActive('bold') && 'bg-gray-200'
-            )}
-          >
-            B
-          </button>
-          <button
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={cn(
-              'px-2 py-1 rounded hover:bg-gray-100 italic',
-              editor.isActive('italic') && 'bg-gray-200'
-            )}
-          >
-            I
-          </button>
-          <button
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={cn(
-              'px-2 py-1 rounded hover:bg-gray-100',
-              editor.isActive('bulletList') && 'bg-gray-200'
-            )}
-          >
-            •
-          </button>
-        </div>
-      )}
     </div>
   );
 }

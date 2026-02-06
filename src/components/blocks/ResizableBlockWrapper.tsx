@@ -37,30 +37,61 @@ const RESIZE_ENABLE: Enable = {
   top: false,
   right: true,
   bottom: true,
-  left: false,
-  topRight: false,
+  left: true,
+  topRight: true,
   bottomRight: true,
-  bottomLeft: false,
-  topLeft: false,
+  bottomLeft: true,
+  topLeft: true,
 };
 
-// Custom handle styles
+// Custom handle styles - invisible hit areas that cover the border
 const handleStyles = {
+  top: {
+    height: '4px',
+    top: '0px',
+    cursor: 'ns-resize',
+  },
   right: {
-    width: '8px',
-    right: '-4px',
+    width: '4px',
+    right: '0px',
     cursor: 'ew-resize',
   },
   bottom: {
-    height: '8px',
-    bottom: '-4px',
+    height: '4px',
+    bottom: '0px',
     cursor: 'ns-resize',
   },
+  left: {
+    width: '4px',
+    left: '0px',
+    cursor: 'ew-resize',
+  },
+  topRight: {
+    width: '12px',
+    height: '12px',
+    right: '0px',
+    top: '0px',
+    cursor: 'nesw-resize',
+  },
   bottomRight: {
-    width: '16px',
-    height: '16px',
-    right: '-8px',
-    bottom: '-8px',
+    width: '12px',
+    height: '12px',
+    right: '0px',
+    bottom: '0px',
+    cursor: 'nwse-resize',
+  },
+  bottomLeft: {
+    width: '12px',
+    height: '12px',
+    left: '0px',
+    bottom: '0px',
+    cursor: 'nesw-resize',
+  },
+  topLeft: {
+    width: '12px',
+    height: '12px',
+    left: '0px',
+    top: '0px',
     cursor: 'nwse-resize',
   },
 };
@@ -155,9 +186,10 @@ export function ResizableBlockWrapper({
         isSelected && 'resize-selected'
       )}
       handleComponent={{
-        bottomRight: isSelected ? <ResizeHandle /> : undefined,
-        right: isSelected ? <ResizeHandleEdge direction="horizontal" /> : undefined,
-        bottom: isSelected ? <ResizeHandleEdge direction="vertical" /> : undefined,
+        topLeft: isSelected ? <ResizeHandle position="top-left" /> : undefined,
+        topRight: isSelected ? <ResizeHandle position="top-right" /> : undefined,
+        bottomLeft: isSelected ? <ResizeHandle position="bottom-left" /> : undefined,
+        bottomRight: isSelected ? <ResizeHandle position="bottom-right" /> : undefined,
       }}
     >
       {/* Content wrapper - maintains flow */}
@@ -183,61 +215,27 @@ export function ResizableBlockWrapper({
 // ============================================================================
 
 /**
- * Corner resize handle
+ * Corner resize handle - visible dots at corners
  */
-function ResizeHandle() {
-  return (
-    <div
-      className={cn(
-        'absolute w-4 h-4 rounded-sm',
-        'bg-primary-500 border-2 border-white shadow-md',
-        'cursor-nwse-resize',
-        'hover:bg-primary-600 hover:scale-110',
-        'transition-transform duration-100'
-      )}
-      style={{
-        right: '-8px',
-        bottom: '-8px',
-      }}
-    />
-  );
-}
-
-/**
- * Edge resize handle (shows as a line)
- */
-function ResizeHandleEdge({ direction }: { direction: 'horizontal' | 'vertical' }) {
-  if (direction === 'horizontal') {
-    return (
-      <div
-        className={cn(
-          'absolute w-1 h-12 rounded-full',
-          'bg-primary-500 opacity-0 hover:opacity-100',
-          'transition-opacity duration-150',
-          'cursor-ew-resize'
-        )}
-        style={{
-          right: '-2px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-        }}
-      />
-    );
-  }
+function ResizeHandle({ position }: { position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' }) {
+  const positionStyles = {
+    'top-left': { top: '-4px', left: '-4px' },
+    'top-right': { top: '-4px', right: '-4px' },
+    'bottom-left': { bottom: '-4px', left: '-4px' },
+    'bottom-right': { bottom: '-4px', right: '-4px' },
+  };
 
   return (
     <div
       className={cn(
-        'absolute h-1 w-12 rounded-full',
-        'bg-primary-500 opacity-0 hover:opacity-100',
-        'transition-opacity duration-150',
-        'cursor-ns-resize'
+        'absolute w-3 h-3 rounded-full',
+        'bg-primary-500 border border-white shadow-sm',
+        'opacity-0 group-hover:opacity-100',
+        'hover:bg-primary-600 hover:scale-125',
+        'transition-all duration-150',
+        'pointer-events-none'
       )}
-      style={{
-        bottom: '-2px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-      }}
+      style={positionStyles[position]}
     />
   );
 }
