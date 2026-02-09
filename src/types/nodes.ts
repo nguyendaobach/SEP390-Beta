@@ -148,12 +148,12 @@ export interface ITextContent {
 
 /**
  * IHeadingContent - Content for HEADING block type
- * @property text - Plain text heading
+ * @property html - HTML content with formatting
  * @property level - Heading level (1-6)
  */
 export interface IHeadingContent {
   type: BlockType.HEADING;
-  text: string;
+  html: string;
   level: 1 | 2 | 3 | 4 | 5 | 6;
 }
 

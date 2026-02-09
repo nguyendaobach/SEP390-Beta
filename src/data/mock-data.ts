@@ -71,7 +71,7 @@ export function createTextBlock(id: string, html: string): IBlock {
  */
 export function createHeadingBlock(
   id: string,
-  text: string,
+  html: string,
   level: 1 | 2 | 3 | 4 | 5 | 6 = 1
 ): IBlock {
   return {
@@ -79,7 +79,7 @@ export function createHeadingBlock(
     type: NodeType.BLOCK,
     content: {
       type: BlockType.HEADING,
-      text,
+      html,
       level,
     },
     children: [],
@@ -290,7 +290,7 @@ export const mockDocument: IDocument = {
       [
         createHeadingBlock(
           'block-004',
-          'Why Choose EduVi?',
+          '<h1>Why Choose EduVi?</h1>',
           1
         ),
         createLayout(
@@ -335,7 +335,7 @@ export const mockDocument: IDocument = {
       [
         createHeadingBlock(
           'block-009',
-          'Node-Based Architecture',
+          '<h1>Node-Based Architecture</h1>',
           1
         ),
         createTextBlock(
@@ -374,7 +374,7 @@ export const mockDocument: IDocument = {
       [
         createHeadingBlock(
           'block-014',
-          'See It In Action',
+          '<h1>See It In Action</h1>',
           1
         ),
         createLayout(
@@ -409,7 +409,7 @@ export const mockDocument: IDocument = {
       [
         createHeadingBlock(
           'block-018',
-          'Ready to Create?',
+          '<h1>Ready to Create?</h1>',
           1
         ),
         createTextBlock(
@@ -444,7 +444,7 @@ export const mockDocument: IDocument = {
       [
         createHeadingBlock(
           'block-022',
-          'Interactive Learning Widgets',
+          '<h1>Interactive Learning Widgets</h1>',
           1
         ),
         createTextBlock(
@@ -519,7 +519,7 @@ export const emptyDocument: IDocument = {
       'card-new-001',
       'Slide 1',
       [
-        createHeadingBlock('block-new-001', 'Your Title Here', 1),
+        createHeadingBlock('block-new-001', '<h1>Your Title Here</h1>', 1),
         createTextBlock('block-new-002', '<p>Start typing your content...</p>'),
       ]
     ),

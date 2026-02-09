@@ -65,6 +65,7 @@ interface NodeRendererProps {
 interface SortableNodeProps {
   node: INode;
   depth?: number;
+  parentLayoutId?: string;
   children: React.ReactNode;
 }
 
@@ -75,7 +76,7 @@ interface SortableNodeProps {
 /**
  * SortableNode wraps content with drag-and-drop functionality
  */
-function SortableNode({ node, depth = 0, children }: SortableNodeProps) {
+function SortableNode({ node, depth = 0, parentLayoutId, children }: SortableNodeProps) {
   const {
     attributes,
     listeners,
@@ -83,7 +84,12 @@ function SortableNode({ node, depth = 0, children }: SortableNodeProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: node.id });
+  } = useSortable({ 
+    id: node.id,
+    data: {
+      parentLayoutId,
+    },
+  });
 
   const selectedNodeId = useDocumentStore((state) => state.selectedNodeId);
   const setSelectedNode = useDocumentStore((state) => state.setSelectedNode);
@@ -490,7 +496,8 @@ function ColumnDropZone({
 
 /**
  * LayoutRenderer handles container nodes with Flex/Grid layouts.
- * Creates separate droppable zones for each column.
+ * For multi-column layouts, if children are nested LAYOUT nodes (one per column),
+ * render them directly. Otherwise, distribute blocks across ColumnDropZones.
  */
 function LayoutRenderer({ node, depth = 0 }: { node: ILayout; depth?: number }) {
   const selectedNodeId = useDocumentStore((state) => state.selectedNodeId);
@@ -499,21 +506,14 @@ function LayoutRenderer({ node, depth = 0 }: { node: ILayout; depth?: number }) 
 
   const columnCount = getColumnCount(node.variant);
   
-  // Distribute children across columns
-  // Children are assigned to columns based on their index position
-  const childrenByColumn: React.ReactNode[][] = Array.from({ length: columnCount }, () => []);
+  // Check if all children are LAYOUT nodes (nested layouts for columns)
+  const childrenAreLayouts = node.children.every(child => isLayout(child));
   
-  node.children.forEach((child, index) => {
-    const columnIndex = index % columnCount;
-    childrenByColumn[columnIndex].push(
-      <div key={child.id} className="min-w-0">
-        <NodeRenderer node={child as INode} depth={depth + 1} />
-      </div>
-    );
-  });
-
-  // Single column layout - simpler rendering
+  // Single column layout - simpler rendering with drop zone
   if (columnCount === 1) {
+    // Get child IDs for SortableContext
+    const childIds = node.children.map(child => child.id);
+    
     return (
       <div
         onClick={(e) => {
@@ -526,15 +526,69 @@ function LayoutRenderer({ node, depth = 0 }: { node: ILayout; depth?: number }) 
           'transition-all duration-200'
         )}
       >
-        <ColumnDropZone layoutId={node.id} columnIndex={0}>
-          {childrenByColumn[0]}
-        </ColumnDropZone>
+        {childrenAreLayouts ? (
+          // Render nested layouts directly (they have their own drop zones)
+          node.children.map((child) => (
+            <div key={child.id} className="min-w-0">
+              <NodeRenderer node={child as INode} depth={depth + 1} />
+            </div>
+          ))
+        ) : (
+          // Wrap blocks in SortableContext and drop zone
+          <SortableContext items={childIds} strategy={verticalListSortingStrategy}>
+            <ColumnDropZone layoutId={node.id} columnIndex={0}>
+              {node.children.map((child) => (
+                <div key={child.id} className="min-w-0">
+                  <SortableNode node={child as INode} depth={depth + 1} parentLayoutId={node.id}>
+                    <NodeRenderer node={child as INode} depth={depth + 1} />
+                  </SortableNode>
+                </div>
+              ))}
+            </ColumnDropZone>
+          </SortableContext>
+        )}
       </div>
     );
   }
 
   // Multi-column layout
   const gridClasses = getGridClasses(node.variant, node.gap);
+
+  // If children are nested layouts (one per column), render them directly
+  if (childrenAreLayouts && node.children.length <= columnCount) {
+    return (
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedNode(node.id);
+        }}
+        className={cn(
+          'relative',
+          gridClasses,
+          isSelected && 'ring-2 ring-primary-300 ring-offset-2 rounded-lg',
+          'transition-all duration-200'
+        )}
+      >
+        {node.children.map((child) => (
+          <div key={child.id} className="min-w-0">
+            <NodeRenderer node={child as INode} depth={depth + 1} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Otherwise, distribute children across columns with drop zones
+  const childrenByColumn: React.ReactNode[][] = Array.from({ length: columnCount }, () => []);
+  
+  node.children.forEach((child, index) => {
+    const columnIndex = index % columnCount;
+    childrenByColumn[columnIndex].push(
+      <div key={child.id} className="min-w-0">
+        <NodeRenderer node={child as INode} depth={depth + 1} />
+      </div>
+    );
+  });
 
   return (
     <div

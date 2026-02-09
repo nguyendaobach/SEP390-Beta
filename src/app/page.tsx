@@ -100,6 +100,7 @@ export default function EditorPage() {
   const activeCardId = useDocumentStore((state) => state.activeCardId);
   const dropMaterial = useDocumentStore((state) => state.dropMaterial);
   const reorderNodesInCard = useDocumentStore((state) => state.reorderNodesInCard);
+  const reorderNodesInLayout = useDocumentStore((state) => state.reorderNodesInLayout);
 
   const [activeDragItem, setActiveDragItem] = React.useState<IMaterial | null>(null);
 
@@ -175,9 +176,18 @@ export default function EditorPage() {
         dropMaterial(activeCardId, material);
       }
     } else {
-      // Handle sortable block reordering (same logic as sidebar slides)
+      // Handle sortable block reordering
       if (active.id !== over.id && activeCardId) {
-        reorderNodesInCard(activeCardId, active.id as string, over.id as string);
+        // Check if drag is happening within a nested layout (template columns)
+        const parentLayoutId = active.data.current?.parentLayoutId;
+        
+        if (parentLayoutId) {
+          // Reorder within the nested layout (column)
+          reorderNodesInLayout(activeCardId, parentLayoutId as string, active.id as string, over.id as string);
+        } else {
+          // Reorder at card level (same as before)
+          reorderNodesInCard(activeCardId, active.id as string, over.id as string);
+        }
       }
     }
   };

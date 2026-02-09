@@ -19,7 +19,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { useDocumentStore } from '@/store';
-import { IMaterial, MaterialCategory, LayoutVariant } from '@/types';
+import { IMaterial, MaterialCategory } from '@/types';
 import { Modal } from '@/components/common/Modal';
 import * as LucideIcons from 'lucide-react';
 import { 
@@ -381,82 +381,147 @@ export function MaterialSidebar({ className }: MaterialSidebarProps) {
 
 function QuickLayoutSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const activeCardId = useDocumentStore((state) => state.activeCardId);
-  const addLayoutToCard = useDocumentStore((state) => state.addLayoutToCard);
+  const addCardFromTemplate = useDocumentStore((state) => state.addCardFromTemplate);
 
-  const handleAddLayout = (variant: LayoutVariant) => {
-    if (activeCardId) {
-      addLayoutToCard(activeCardId, variant);
-      setIsModalOpen(false);
-    }
+  const handleAddTemplate = (templateType: string) => {
+    addCardFromTemplate(templateType);
+    setIsModalOpen(false);
   };
 
-  // Layout template definitions
-  const layoutTemplates = {
-    basic: [
-      {
-        variant: LayoutVariant.SINGLE,
-        label: 'Blank card',
-        preview: (
-          <div className="w-full h-full bg-gray-50 rounded border border-gray-200" />
-        ),
-      },
-      {
-        variant: LayoutVariant.TWO_COLUMN,
-        label: 'Two columns',
-        preview: (
-          <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
-            <div className="flex-1 bg-gray-100 rounded" />
-            <div className="flex-1 bg-gray-100 rounded" />
+  // Card template definitions (6 templates như Gamma)
+  const cardTemplates = [
+    {
+      type: 'image-text-left',
+      label: 'Image and text',
+      preview: (
+        <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
+          <div className="w-1/3  bg-gray-200 rounded flex items-center justify-center">
+            <LucideIcons.ImagePlus  className="text-gray-400" />
           </div>
-        ),
-      },
-      {
-        variant: LayoutVariant.THREE_COLUMN,
-        label: 'Three columns',
-        preview: (
-          <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
-            <div className="flex-1 bg-gray-100 rounded" />
-            <div className="flex-1 bg-gray-100 rounded" />
-            <div className="flex-1 bg-gray-100 rounded" />
+          <div className="flex-1 flex flex-col gap-1">
+            <div className="h-5 bg-gray-300 rounded w-3/4" />
+            <div className="h-3 bg-gray-200 rounded" />
+            <div className="h-3 bg-gray-200 rounded w-5/6" />
           </div>
-        ),
-      },
-      {
-        variant: LayoutVariant.SIDEBAR_LEFT,
-        label: 'Sidebar left',
-        preview: (
-          <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
-            <div className="w-1/3 bg-gray-100 rounded" />
-            <div className="flex-1 bg-gray-100 rounded" />
+        </div>
+      ),
+    },
+    {
+      type: 'text-image-right',
+      label: 'Text and image',
+      preview: (
+        <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
+          <div className="flex-1 flex flex-col gap-1">
+            <div className="h-5 bg-gray-300 rounded w-3/4" />
+            <div className="h-3 bg-gray-200 rounded" />
+            <div className="h-3 bg-gray-200 rounded w-5/6" />
           </div>
-        ),
-      },
-      {
-        variant: LayoutVariant.SIDEBAR_RIGHT,
-        label: 'Sidebar right',
-        preview: (
-          <div className="w-full h-full flex gap-1 p-2 bg-white border border-gray-200 rounded">
-            <div className="flex-1 bg-gray-100 rounded" />
-            <div className="w-1/3 bg-gray-100 rounded" />
+          <div className="w-1/3 bg-gray-200 rounded flex items-center justify-center">
+            <LucideIcons.ImagePlus className="text-gray-400" />
           </div>
-        ),
-      },
-    ],
-  };
+        </div>
+      ),
+    },
+    {
+      type: 'two-columns',
+      label: 'Two columns',
+      preview: (
+        <div className="w-full h-full flex flex-col gap-1 p-2 bg-white border border-gray-200 rounded">
+          <div className="h-5 bg-gray-300 rounded w-2/3 mx-auto" />
+          <div className="flex-1 flex gap-1">
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-4/5" />
+            </div>
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-4/5" />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      type: 'two-columns-alt',
+      label: 'Two column text',
+      preview: (
+        <div className="w-full h-full flex flex-col gap-1 p-2 bg-white border border-gray-200 rounded">
+          <div className="h-5 bg-gray-300 rounded w-2/3 mx-auto" />
+          <div className="flex-1 flex gap-1">
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-3/4" />
+            </div>
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-3/4" />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      type: 'three-columns',
+      label: 'Three columns',
+      preview: (
+        <div className="w-full h-full flex flex-col gap-1 p-2 bg-white border border-gray-200 rounded">
+          <div className="h-5 bg-gray-300 rounded w-2/3 mx-auto" />
+          <div className="flex-1 flex gap-1">
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-4/5" />
+            </div>
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-4/5" />
+            </div>
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-4/5" />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      type: 'three-columns-alt',
+      label: 'Three column text',
+      preview: (
+        <div className="w-full h-full flex flex-col gap-1 p-2 bg-white border border-gray-200 rounded">
+          <div className="h-5 bg-gray-300 rounded w-2/3 mx-auto" />
+          <div className="flex-1 flex gap-1">
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-3/4" />
+            </div>
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-3/4" />
+            </div>
+            <div className="flex-1 flex flex-col gap-0.5">
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded" />
+              <div className="h-3 bg-gray-200 rounded w-3/4" />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <>
       <div className="p-3 border-t border-gray-200 bg-white">
         <button
           onClick={() => setIsModalOpen(true)}
-          disabled={!activeCardId}
           className={cn(
             'w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg',
             'font-medium text-sm transition-all duration-150',
-            activeCardId
-              ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-lg'
           )}
         >
           <Sparkles className="w-4 h-4" />
@@ -464,7 +529,7 @@ function QuickLayoutSection() {
         </button>
       </div>
 
-      {/* Layout Templates Modal */}
+      {/* Card Templates Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -480,56 +545,36 @@ function QuickLayoutSection() {
               <h3 className="text-sm font-medium text-gray-700">Basic</h3>
             </div>
             
-            <div className="grid grid-cols-4 gap-4">
-              {layoutTemplates.basic.map((template, index) => (
+            <div className="grid grid-cols-3 gap-4">
+              {cardTemplates.map((template) => (
                 <button
-                  key={index}
-                  onClick={() => handleAddLayout(template.variant)}
-                  disabled={!activeCardId}
+                  key={template.type}
+                  onClick={() => handleAddTemplate(template.type)}
                   className={cn(
                     'flex flex-col gap-2 p-0 rounded-lg',
                     'transition-all duration-150',
-                    'hover:scale-[1.02]',
-                    !activeCardId && 'opacity-50 cursor-not-allowed'
+                    'hover:scale-[1.02]'
                   )}
                 >
                   {/* Template Preview */}
                   <div
                     className={cn(
-                      'aspect-[4/3] w-full rounded-lg overflow-hidden',
+                      'aspect-[4/3] w-full h-32 rounded-lg overflow-hidden',
                       'border-2 transition-all duration-150',
-                      activeCardId
-                        ? 'border-gray-200 hover:border-indigo-400 hover:shadow-md'
-                        : 'border-gray-100'
+                      'border-gray-200 hover:border-indigo-400 hover:shadow-md'
                     )}
                   >
                     {template.preview}
                   </div>
                   
                   {/* Template Label */}
-                  <span
-                    className={cn(
-                      'text-xs text-center px-1',
-                      activeCardId ? 'text-gray-700' : 'text-gray-400'
-                    )}
-                  >
+                  <span className="text-xs text-center px-1 text-gray-700">
                     {template.label}
                   </span>
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Info Section */}
-          {!activeCardId && (
-            <div className="px-6 pb-6">
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800">
-                  <strong>Note:</strong> Please select a slide first to apply a template.
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </Modal>
     </>

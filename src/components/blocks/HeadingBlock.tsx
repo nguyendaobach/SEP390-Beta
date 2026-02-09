@@ -4,15 +4,29 @@
  * HeadingBlock Component
  * ======================
  * 
- * Displays a heading with configurable level (H1-H6).
- * Editable inline with automatic font sizing.
- * Updates are debounced to avoid excessive history entries.
+ * Rich text heading editor using Tiptap.
+ * Supports formatting (bold, italic, color, etc.) via FloatingTextToolbar.
+ * 
+ * Features:
+ * - Rich text editing with formatting toolbar
+ * - Configurable heading level (H1-H6)
+ * - Auto-growing height
+ * - Floating toolbar when text is selected
+ * - Content sync with Zustand store (debounced)
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import Color from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
 import { cn } from '@/lib/utils';
 import { useDocumentStore } from '@/store';
 import { BlockType, IHeadingContent } from '@/types';
+import { FloatingTextToolbar } from './FloatingTextToolbar';
 
 interface HeadingBlockProps {
   id: string;
@@ -22,12 +36,12 @@ interface HeadingBlockProps {
 }
 
 const headingStyles: Record<number, string> = {
-  1: 'text-4xl font-bold',
-  2: 'text-3xl font-bold',
-  3: 'text-2xl font-semibold',
-  4: 'text-xl font-semibold',
-  5: 'text-lg font-medium',
-  6: 'text-base font-medium',
+  1: 'prose-h1:text-4xl prose-h1:font-bold',
+  2: 'prose-h2:text-3xl prose-h2:font-bold',
+  3: 'prose-h3:text-2xl prose-h3:font-semibold',
+  4: 'prose-h4:text-xl prose-h4:font-semibold',
+  5: 'prose-h5:text-lg prose-h5:font-medium',
+  6: 'prose-h6:text-base prose-h6:font-medium',
 };
 
 export function HeadingBlock({
@@ -36,24 +50,71 @@ export function HeadingBlock({
   isSelected = false,
   onSelect,
 }: HeadingBlockProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [text, setText] = useState(content.text);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const updateBlockContent = useDocumentStore((state) => state.updateBlockContent);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [showToolbar, setShowToolbar] = useState(false);
 
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3, 4, 5, 6],
+        },
+      }),
+      Placeholder.configure({
+        placeholder: 'Enter heading...',
+        emptyEditorClass: 'is-editor-empty',
+      }),
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      TextStyle,
+      Color,
+    ],
+    content: content.html,
+    editorProps: {
+      attributes: {
+        class: cn(
+          'prose prose-sm sm:prose max-w-none',
+          'focus:outline-none',
+          'min-h-[1.5em]',
+          headingStyles[content.level],
+          'prose-headings:font-semibold prose-headings:text-gray-900',
+          'prose-strong:font-semibold',
+          'prose-em:italic'
+        ),
+      },
+    },
+    onUpdate: ({ editor }) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      debounceTimerRef.current = setTimeout(() => {
+        const html = editor.getHTML();
+        updateBlockContent(id, {
+          type: BlockType.HEADING,
+          html,
+          level: content.level,
+        });
+      }, 500);
+    },
+    onFocus: () => {
+      onSelect?.();
+    },
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to } = editor.state.selection;
+      const hasSelection = from !== to;
+      setShowToolbar(hasSelection);
+    },
+    onBlur: () => {
+      setTimeout(() => {
+        setShowToolbar(false);
+      }, 150);
+    },
+  });
 
-  useEffect(() => {
-    setText(content.text);
-  }, [content.text]);
-
-  // Clean up debounce timer on unmount
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
@@ -62,87 +123,48 @@ export function HeadingBlock({
     };
   }, []);
 
-  const handleSave = () => {
-    setIsEditing(false);
-    
-    // Clear any pending debounce
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+  useEffect(() => {
+    if (editor && content.html !== editor.getHTML()) {
+      editor.commands.setContent(content.html, false);
     }
-    
-    if (text !== content.text) {
-      updateBlockContent(id, {
-        type: BlockType.HEADING,
-        text,
-        level: content.level,
-      });
-    }
-  };
+  }, [editor, content.html]);
 
-  const handleChange = (newText: string) => {
-    setText(newText);
-    
-    // Debounce updates while typing
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+  // Set heading level when editor is ready
+  useEffect(() => {
+    if (editor && !editor.isDestroyed) {
+      editor.commands.setHeading({ level: content.level });
     }
-    
-    debounceTimerRef.current = setTimeout(() => {
-      if (newText !== content.text) {
-        updateBlockContent(id, {
-          type: BlockType.HEADING,
-          text: newText,
-          level: content.level,
-        });
-      }
-    }, 500);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    }
-    if (e.key === 'Escape') {
-      setText(content.text);
-      setIsEditing(false);
-    }
-  };
-
-  const Tag = `h${content.level}` as keyof JSX.IntrinsicElements;
+  }, [editor, content.level]);
 
   return (
     <div
       className={cn(
-        'relative group px-3 py-2 rounded-lg',
-        'transition-all duration-200',
-        isSelected && 'ring-2 ring-primary-500 ring-offset-2',
-        'hover:bg-gray-50/50'
+        'relative rounded-lg',
+        isSelected && !showToolbar && 'ring-2 ring-primary-500 ring-offset-2 ',
+        'transition-all duration-200'
+        
       )}
-      onClick={() => {
-        onSelect?.();
-        if (!isEditing) setIsEditing(true);
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onSelect?.();
+        }
       }}
     >
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          value={text}
-          onChange={(e) => handleChange(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
-          className={cn(
-            'w-full bg-transparent border-none outline-none',
-            headingStyles[content.level],
-            'text-gray-900'
-          )}
-          placeholder="Enter heading..."
-        />
-      ) : (
-        <Tag className={cn(headingStyles[content.level], 'text-gray-900 cursor-text')}>
-          {content.text || 'Click to edit...'}
-        </Tag>
+      {editor && showToolbar && (
+        <FloatingTextToolbar editor={editor} show={showToolbar} />
       )}
+
+      <EditorContent
+        editor={editor}
+        className={cn(
+          'w-full',
+          'px-3 py-2',
+          'rounded-lg',
+          'bg-white',
+          'hover:bg-gray-50/50',
+          'transition-colors duration-150'
+        )}
+      />
     </div>
   );
 }

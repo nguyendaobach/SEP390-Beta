@@ -128,6 +128,7 @@ interface DocumentState {
   
   // Node CRUD Actions
   addCard: (title?: string) => void;
+  addCardFromTemplate: (templateType: string) => void;
   addBlockToCard: (cardId: string, blockType: BlockType) => void;
   addLayoutToCard: (cardId: string, variant: LayoutVariant) => void;
   addBlockToLayout: (layoutId: string, blockType: BlockType) => void;
@@ -144,6 +145,7 @@ interface DocumentState {
   // Reorder Actions (for drag & drop)
   reorderCards: (activeId: string, overId: string) => void;
   reorderNodesInCard: (cardId: string, activeId: string, overId: string) => void;
+  reorderNodesInLayout: (cardId: string, layoutId: string, activeId: string, overId: string) => void;
   
   // Material/Widget Actions
   dropMaterial: (parentId: string, material: IMaterial, columnIndex?: number, customData?: Record<string, unknown>) => void;
@@ -542,6 +544,231 @@ export const useDocumentStore = create<DocumentState>()(
         });
       },
 
+      addCardFromTemplate: (templateType: string) => {
+        const { document } = get();
+        if (!document) return;
+
+        const cardId = `card-${uuidv4()}`;
+        let cardChildren: (ILayout | IBlock)[] = [];
+
+        // Template 1: Image left, Text right
+        if (templateType === 'image-text-left') {
+          const layoutId = `layout-${uuidv4()}`;
+          cardChildren = [
+            {
+              id: layoutId,
+              type: NodeType.LAYOUT,
+              variant: LayoutVariant.TWO_COLUMN,
+              gap: 6,
+              children: [
+                createImageBlock(`block-${uuidv4()}`, 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop', 'Slide image'),
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createHeadingBlock(`block-${uuidv4()}`, 'Slide Title', 2),
+                    createTextBlock(`block-${uuidv4()}`, '<p>Add your description here...</p>'),
+                  ],
+                },
+              ],
+            } as ILayout,
+          ];
+        }
+        // Template 2: Text left, Image right
+        else if (templateType === 'text-image-right') {
+          const layoutId = `layout-${uuidv4()}`;
+          cardChildren = [
+            {
+              id: layoutId,
+              type: NodeType.LAYOUT,
+              variant: LayoutVariant.TWO_COLUMN,
+              gap: 6,
+              children: [
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createHeadingBlock(`block-${uuidv4()}`, 'Slide Title', 2),
+                    createTextBlock(`block-${uuidv4()}`, '<p>Add your description here...</p>'),
+                  ],
+                },
+                createImageBlock(`block-${uuidv4()}`, 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop', 'Slide image'),
+              ],
+            } as ILayout,
+          ];
+        }
+        // Template 3: Two columns text
+        else if (templateType === 'two-columns') {
+          const layoutId = `layout-${uuidv4()}`;
+          cardChildren = [
+            createHeadingBlock(`block-${uuidv4()}`, 'Slide Title', 2),
+            {
+              id: layoutId,
+              type: NodeType.LAYOUT,
+              variant: LayoutVariant.TWO_COLUMN,
+              gap: 6,
+              children: [
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Column 1 content...</p>'),
+                  ],
+                },
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Column 2 content...</p>'),
+                  ],
+                },
+              ],
+            } as ILayout,
+          ];
+        }
+        // Template 4: Two columns text (alternative)
+        else if (templateType === 'two-columns-alt') {
+          const layoutId = `layout-${uuidv4()}`;
+          cardChildren = [
+            createHeadingBlock(`block-${uuidv4()}`, 'Slide Title', 2),
+            {
+              id: layoutId,
+              type: NodeType.LAYOUT,
+              variant: LayoutVariant.TWO_COLUMN,
+              gap: 6,
+              children: [
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Column A content...</p>'),
+                  ],
+                },
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Column B content...</p>'),
+                  ],
+                },
+              ],
+            } as ILayout,
+          ];
+        }
+        // Template 5: Three columns
+        else if (templateType === 'three-columns') {
+          const layoutId = `layout-${uuidv4()}`;
+          cardChildren = [
+            createHeadingBlock(`block-${uuidv4()}`, 'Slide Title', 2),
+            {
+              id: layoutId,
+              type: NodeType.LAYOUT,
+              variant: LayoutVariant.THREE_COLUMN,
+              gap: 6,
+              children: [
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Column 1...</p>'),
+                  ],
+                },
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Column 2...</p>'),
+                  ],
+                },
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Column 3...</p>'),
+                  ],
+                },
+              ],
+            } as ILayout,
+          ];
+        }
+        // Template 6: Three columns (alternative)
+        else if (templateType === 'three-columns-alt') {
+          const layoutId = `layout-${uuidv4()}`;
+          cardChildren = [
+            createHeadingBlock(`block-${uuidv4()}`, 'Slide Title', 2),
+            {
+              id: layoutId,
+              type: NodeType.LAYOUT,
+              variant: LayoutVariant.THREE_COLUMN,
+              gap: 6,
+              children: [
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Point A</p>'),
+                  ],
+                },
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Point B</p>'),
+                  ],
+                },
+                {
+                  id: `layout-${uuidv4()}`,
+                  type: NodeType.LAYOUT,
+                  variant: LayoutVariant.SINGLE,
+                  gap: 4,
+                  children: [
+                    createTextBlock(`block-${uuidv4()}`, '<p>Point C</p>'),
+                  ],
+                },
+              ],
+            } as ILayout,
+          ];
+        }
+
+        const newCard = createCard(
+          cardId,
+          `Slide ${document.cards.length + 1}`,
+          cardChildren
+        );
+
+        const newDoc = {
+          ...document,
+          cards: [...document.cards, newCard],
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc, {
+          activeCardId: newCard.id,
+        });
+      },
+
       addBlockToCard: (cardId: string, blockType: BlockType) => {
         const { document } = get();
         if (!document) return;
@@ -788,6 +1015,45 @@ export const useDocumentStore = create<DocumentState>()(
         setDocumentWithHistory(newDoc);
       },
 
+      reorderNodesInLayout: (cardId: string, layoutId: string, activeId: string, overId: string) => {
+        const { document } = get();
+        if (!document || activeId === overId) return;
+
+        const newDoc = {
+          ...document,
+          cards: document.cards.map((card) => {
+            if (card.id !== cardId) return card;
+
+            return {
+              ...card,
+              children: updateNodeInTree<ILayout | IBlock>(
+                card.children,
+                layoutId,
+                (layout) => {
+                  // Only layouts can have children
+                  if (!('children' in layout)) return layout;
+                  
+                  const children = layout.children;
+                  const oldIndex = children.findIndex((n) => n.id === activeId);
+                  const newIndex = children.findIndex((n) => n.id === overId);
+
+                  if (oldIndex === -1 || newIndex === -1) return layout;
+
+                  // Return layout with reordered children
+                  return {
+                    ...layout,
+                    children: arrayMove(children, oldIndex, newIndex),
+                  } as ILayout;
+                }
+              ),
+            };
+          }),
+          updatedAt: new Date().toISOString(),
+        };
+
+        setDocumentWithHistory(newDoc);
+      },
+
       // ======================================================================
       // STYLE UPDATE ACTIONS
       // ======================================================================
@@ -880,25 +1146,38 @@ export const useDocumentStore = create<DocumentState>()(
               parentId,
               (node) => {
                 if (isLayout(node)) {
-                  // If columnIndex is specified, insert at position to maintain column order
-                  if (columnIndex !== undefined) {
+                  // Check if children are nested layouts (one layout per column)
+                  const childrenAreLayouts = node.children.every(child => isLayout(child));
+                  
+                  // If columnIndex is specified and children are nested layouts
+                  if (columnIndex !== undefined && childrenAreLayouts) {
+                    // Add block to the specific nested layout (column)
+                    const targetColumn = node.children[columnIndex] as ILayout;
+                    if (targetColumn) {
+                      const updatedChildren = [...node.children];
+                      updatedChildren[columnIndex] = {
+                        ...targetColumn,
+                        children: [...targetColumn.children, newBlock],
+                      };
+                      return { ...node, children: updatedChildren };
+                    }
+                  }
+                  
+                  // If columnIndex is specified but children are blocks (old distribution logic)
+                  if (columnIndex !== undefined && !childrenAreLayouts) {
                     const columnCount = getColumnCountForVariant(node.variant);
                     // Calculate insert position to place in correct column
-                    // Items are distributed: item 0 -> col 0, item 1 -> col 1, item 2 -> col 0, etc.
                     const currentColCounts = Array(columnCount).fill(0);
                     node.children.forEach((_, idx) => {
                       currentColCounts[idx % columnCount]++;
                     });
                     
-                    // Find the position where we need to insert to add to the target column
-                    // New item should go at: (currentColCounts[columnIndex] * columnCount) + columnIndex
                     let insertPosition = 0;
                     for (let i = 0; i < node.children.length; i++) {
                       if (i % columnCount === columnIndex) {
-                        insertPosition = i + columnCount; // After the last item in this column
+                        insertPosition = i + columnCount;
                       }
                     }
-                    // If column is empty, insert at columnIndex position
                     if (currentColCounts[columnIndex] === 0) {
                       insertPosition = columnIndex;
                     } else {
@@ -910,6 +1189,7 @@ export const useDocumentStore = create<DocumentState>()(
                     return { ...node, children: newChildren };
                   }
                   
+                  // Default: add to end
                   return {
                     ...node,
                     children: [...node.children, newBlock],
