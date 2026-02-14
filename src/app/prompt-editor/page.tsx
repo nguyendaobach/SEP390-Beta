@@ -44,35 +44,16 @@ export default function PromptEditorPage() {
           {/* Logo/Home */}
           <button
             onClick={() => router.push('/')}
-            className="flex items-center gap-2 text-gray-900 hover:text-blue-600 transition-colors"
-          >
+            className="flex items-center gap-2 text-gray-900 hover:text-blue-600 transition-colors">
             <Home className="w-6 h-6" />
             <span className="text-sm font-semibold">Home</span>
           </button>
-
-          <div className="h-6 w-px bg-gray-300" />
-
           {/* Title */}
-          <h1 className="text-xl font-bold text-gray-900">Prompt editor</h1>
+          <h1 className="text-xl ml-72 font-bold text-gray-900">Prompt editor</h1>
         </div>
+        
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
-          {/* Help */}
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <HelpCircle className="w-5 h-5 text-gray-600" />
-          </button>
 
-          {/* Create Presentation Button */}
-          {generatedOutline.length > 0 && (
-            <button
-              onClick={handleCreatePresentation}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
-            >
-              Create Presentation
-            </button>
-          )}
-        </div>
       </header>
 
       {/* Main Content - 3 Column Layout */}

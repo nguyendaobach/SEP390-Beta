@@ -47,9 +47,6 @@ export function PromptPanel() {
         <div className="flex items-center gap-2">
           <Zap className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-semibold text-gray-900">Prompt</h3>
-          <button className="ml-auto p-1 hover:bg-gray-200 rounded transition-colors">
-            <Info className="w-4 h-4 text-gray-500" />
-          </button>
         </div>
       </div>
 
@@ -98,17 +95,6 @@ export function PromptPanel() {
 
       {/* Footer with Generate Button */}
       <div className="px-6 py-4 border-t border-gray-200 bg-white">
-        {/* Credit Usage */}
-        <div className="flex items-center justify-between mb-3 text-xs text-gray-500">
-          <div className="flex items-center gap-1">
-            <Coins className="w-4 h-4" />
-            <span>{creditUsed}/{totalCredit}</span>
-          </div>
-          {generatedOutline.length > 0 && (
-            <span className="text-gray-600">{totalCards} cards total</span>
-          )}
-        </div>
-
         {/* Generate Button */}
         <button
           onClick={handleGenerate}
