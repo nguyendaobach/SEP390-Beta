@@ -45,6 +45,7 @@ import {
   NodeType,
   BlockType,
   LayoutVariant,
+  ICardOutline,
 } from '@/types';
 
 // ============================================================================
@@ -525,5 +526,221 @@ export const emptyDocument: IDocument = {
     ),
   ],
 };
+
+// ============================================================================
+// PROMPT EDITOR MOCK DATA
+// ============================================================================
+
+/**
+ * Sample prompts for testing Prompt Editor
+ * These represent typical user input before AI generation
+ */
+export const mockPrompts = {
+  eduViLaunch: {
+    mainPrompt: 'Tạo bài thuyết trình về sản phẩm EduVi - nền tảng tạo slide thế hệ mới',
+    additionalInstructions: 'Tập trung vào các tính năng công nghệ, kiến trúc hệ thống, và lợi ích cho người dùng. Thêm ví dụ tương tác.',
+  },
+  jsBasics: {
+    mainPrompt: 'Tạo bài giảng JavaScript cơ bản cho sinh viên',
+    additionalInstructions: 'Bao gồm biến, hàm, vòng lặp và ví dụ thực tế',
+  },
+  reactIntro: {
+    mainPrompt: 'Giới thiệu React framework cho developer',
+    additionalInstructions: 'Giải thích components, hooks, state management',
+  },
+};
+
+/**
+ * Generated card outlines for Prompt Editor
+ * This represents what the AI would return after processing a prompt
+ * Based on the mockDocument slides content
+ */
+export const mockCardOutlines: ICardOutline[] = [
+  {
+    id: 'outline-001',
+    title: 'Welcome',
+    bullets: [
+      'Giới thiệu EduVi - nền tảng slide thế hệ mới',
+      'Tạo nội dung đẹp và động với trình soạn thảo trực quan',
+      'Hình ảnh hero với caption "Transform your ideas into stunning presentations"',
+    ],
+    order: 0,
+  },
+  {
+    id: 'outline-002',
+    title: 'Key Features',
+    bullets: [
+      '🚀 Lightning Fast - Xây dựng với Next.js 14, tối ưu hiệu suất',
+      '🎨 Beautiful Design - Template chuyên nghiệp với Tailwind CSS',
+      '📝 Rich Text Editing - Trình soạn thảo Tiptap mạnh mẽ',
+      '🔄 Real-time Collaboration - Làm việc nhóm, đồng bộ tức thì',
+    ],
+    order: 1,
+  },
+  {
+    id: 'outline-003',
+    title: 'Architecture',
+    bullets: [
+      'Kiến trúc Node-Based với cấu trúc cây đệ quy',
+      'Card Node - Đại diện cho một slide (trục X)',
+      'Layout Node - Container cấu trúc (trục Y)',
+      'Block Node - Phần tử nội dung (độ sâu Z)',
+      'Layout linh hoạt: Grid, Column, Masonry',
+    ],
+    order: 2,
+  },
+  {
+    id: 'outline-004',
+    title: 'Demo',
+    bullets: [
+      'Xem EduVi hoạt động thực tế',
+      'Nội dung tự động reflow khi chỉnh sửa',
+      'Không cần điều chỉnh vị trí thủ công',
+      'Thử mở rộng block và xem các phần tử khác tự động điều chỉnh',
+    ],
+    order: 3,
+  },
+  {
+    id: 'outline-005',
+    title: 'Get Started',
+    bullets: [
+      'Sẵn sàng tạo bài thuyết trình của bạn',
+      'Free Tier: 5 presentations, basic templates, PDF export',
+      'Pro Tier: Unlimited presentations, premium templates, all formats, collaboration',
+      'EduVi giúp tạo nội dung chuyên nghiệp, hấp dẫn và động',
+    ],
+    order: 4,
+  },
+  {
+    id: 'outline-006',
+    title: 'Interactive Demo',
+    bullets: [
+      'Widget học tập tương tác',
+      'Quiz: Câu hỏi trắc nghiệm JavaScript với giải thích',
+      'Flashcard: Thẻ ghi nhớ lật hai mặt',
+      'Fill-in-Blank: Điền vào chỗ trống',
+      'Hoạt động mượt mà trên Flutter Viewer app',
+    ],
+    order: 5,
+  },
+];
+
+/**
+ * Alternative outline examples for different topics
+ */
+export const mockJavaScriptOutline: ICardOutline[] = [
+  {
+    id: 'js-outline-001',
+    title: 'Giới thiệu JavaScript',
+    bullets: [
+      'JavaScript là ngôn ngữ lập trình phổ biến nhất',
+      'Chạy trên mọi trình duyệt web',
+      'Sử dụng cho cả Frontend và Backend (Node.js)',
+    ],
+    order: 0,
+  },
+  {
+    id: 'js-outline-002',
+    title: 'Biến và Kiểu dữ liệu',
+    bullets: [
+      'var, let, const - cách khai báo biến',
+      'Kiểu dữ liệu: String, Number, Boolean, Object, Array',
+      'Template literals với backticks',
+      'Ví dụ thực tế về khai báo và sử dụng biến',
+    ],
+    order: 1,
+  },
+  {
+    id: 'js-outline-003',
+    title: 'Hàm (Functions)',
+    bullets: [
+      'Function declaration vs Function expression',
+      'Arrow functions (ES6+)',
+      'Parameters và return values',
+      'Callback functions',
+    ],
+    order: 2,
+  },
+  {
+    id: 'js-outline-004',
+    title: 'Vòng lặp và Điều kiện',
+    bullets: [
+      'if/else statements',
+      'Switch case',
+      'for loop, while loop, forEach',
+      'map, filter, reduce cho arrays',
+    ],
+    order: 3,
+  },
+  {
+    id: 'js-outline-005',
+    title: 'DOM Manipulation',
+    bullets: [
+      'querySelector và getElementById',
+      'Thay đổi nội dung HTML',
+      'Thêm/xóa CSS classes',
+      'Event listeners',
+    ],
+    order: 4,
+  },
+];
+
+export const mockReactOutline: ICardOutline[] = [
+  {
+    id: 'react-outline-001',
+    title: 'React là gì?',
+    bullets: [
+      'Thư viện JavaScript để xây dựng giao diện',
+      'Được phát triển bởi Meta (Facebook)',
+      'Component-based architecture',
+      'Virtual DOM để tối ưu hiệu suất',
+    ],
+    order: 0,
+  },
+  {
+    id: 'react-outline-002',
+    title: 'Components',
+    bullets: [
+      'Function Components vs Class Components',
+      'Props - truyền dữ liệu giữa components',
+      'Children và composition',
+      'Component lifecycle',
+    ],
+    order: 1,
+  },
+  {
+    id: 'react-outline-003',
+    title: 'Hooks',
+    bullets: [
+      'useState - quản lý state',
+      'useEffect - side effects',
+      'useContext - global state',
+      'Custom hooks',
+    ],
+    order: 2,
+  },
+  {
+    id: 'react-outline-004',
+    title: 'State Management',
+    bullets: [
+      'Local state vs Global state',
+      'Context API',
+      'Redux Toolkit',
+      'Zustand (lightweight alternative)',
+    ],
+    order: 3,
+  },
+  {
+    id: 'react-outline-005',
+    title: 'Best Practices',
+    bullets: [
+      'Component composition',
+      'Avoid prop drilling',
+      'Memoization với useMemo và useCallback',
+      'Code splitting và lazy loading',
+    ],
+    order: 4,
+  },
+];
 
 export default mockDocument;

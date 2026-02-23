@@ -7,6 +7,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { usePromptEditorStore } from '@/store';
 import {
   Zap,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export function PromptPanel() {
+  const router = useRouter();
   const {
     mainPrompt,
     additionalInstructions,
@@ -30,9 +32,18 @@ export function PromptPanel() {
     generateContent,
     creditUsed,
     totalCredit,
+    loadExample,
   } = usePromptEditorStore();
 
   const handleGenerate = () => {
+    // If already have outline, create presentation
+    if (generatedOutline.length > 0) {
+      // TODO: Convert outline to document structure and navigate to editor
+      router.push('/editor');
+      return;
+    }
+
+    // Otherwise, generate content
     if (!mainPrompt.trim()) {
       alert('Vui lòng nhập prompt');
       return;
@@ -66,6 +77,38 @@ export function PromptPanel() {
           />
         </div>
 
+        {/* Example Prompts */}
+        {generatedOutline.length === 0 && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Try an example
+            </label>
+            <div className="space-y-2">
+              <button
+                onClick={() => loadExample('eduvi')}
+                className="w-full px-4 py-3 text-left text-sm bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border border-blue-200 rounded-lg transition-all group"
+              >
+                <div className="font-medium text-blue-900 mb-1">🎨 EduVi Product Launch</div>
+                <div className="text-xs text-blue-700">Presentation about EduVi platform features and architecture</div>
+              </button>
+              <button
+                onClick={() => loadExample('javascript')}
+                className="w-full px-4 py-3 text-left text-sm bg-gradient-to-r from-yellow-50 to-orange-50 hover:from-yellow-100 hover:to-orange-100 border border-yellow-200 rounded-lg transition-all group"
+              >
+                <div className="font-medium text-yellow-900 mb-1">⚡ JavaScript Basics</div>
+                <div className="text-xs text-yellow-700">Programming course for students</div>
+              </button>
+              <button
+                onClick={() => loadExample('react')}
+                className="w-full px-4 py-3 text-left text-sm bg-gradient-to-r from-cyan-50 to-blue-50 hover:from-cyan-100 hover:to-blue-100 border border-cyan-200 rounded-lg transition-all group"
+              >
+                <div className="font-medium text-cyan-900 mb-1">⚛️ React Framework</div>
+                <div className="text-xs text-cyan-700">Introduction to React for developers</div>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Additional Instructions */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -98,9 +141,9 @@ export function PromptPanel() {
         {/* Generate Button */}
         <button
           onClick={handleGenerate}
-          disabled={isGenerating || !mainPrompt.trim()}
+          disabled={isGenerating || (!mainPrompt.trim() && generatedOutline.length === 0)}
           className={`w-full py-3 rounded-lg font-medium text-white transition-all ${
-            isGenerating || !mainPrompt.trim()
+            isGenerating || (!mainPrompt.trim() && generatedOutline.length === 0)
               ? 'bg-gray-300 cursor-not-allowed'
               : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
           }`}

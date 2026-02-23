@@ -23,18 +23,7 @@ import { Home, HelpCircle } from 'lucide-react';
 
 export default function PromptEditorPage() {
   const router = useRouter();
-  const { generatedOutline } = usePromptEditorStore();
-
-  const handleCreatePresentation = () => {
-    if (generatedOutline.length === 0) {
-      alert('Vui lòng generate content trước');
-      return;
-    }
-
-    // TODO: Convert outline to document structure and navigate to editor
-    // For now, just navigate to the main editor
-    router.push('/editor');
-  };
+  const { creditUsed, totalCredit } = usePromptEditorStore();
 
   return (
     <div className="h-screen flex flex-col bg-white">
@@ -52,8 +41,13 @@ export default function PromptEditorPage() {
           <h1 className="text-xl ml-72 font-bold text-gray-900">Prompt editor</h1>
         </div>
         
-
-
+        {/* Right Actions */}
+        <div className="flex items-center gap-4">
+          {/* Help */}
+          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <HelpCircle className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
       </header>
 
       {/* Main Content - 3 Column Layout */}

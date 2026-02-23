@@ -19,6 +19,12 @@ import {
   FormatType,
   ContentViewMode,
 } from '@/types';
+import {
+  mockPrompts,
+  mockCardOutlines,
+  mockJavaScriptOutline,
+  mockReactOutline,
+} from '@/data/mock-data';
 
 /**
  * Default settings
@@ -67,6 +73,9 @@ interface IPromptEditorStore extends IPromptEditorState {
 
   // Actions for credits
   useCredit: (amount: number) => void;
+
+  // Actions for loading examples
+  loadExample: (exampleType: 'eduvi' | 'javascript' | 'react') => void;
 
   // Reset
   reset: () => void;
@@ -195,25 +204,25 @@ export const usePromptEditorStore = create<IPromptEditorStore>((set, get) => ({
       // For now, simulate with mock data
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Mock generated outline
-      const mockOutline: ICardOutline[] = [
-        {
-          id: '1',
-          title: state.mainPrompt || 'Tiêu đề slide 1',
-          bullets: ['Nội dung bullet 1', 'Nội dung bullet 2'],
-          order: 1,
-        },
-        {
-          id: '2',
-          title: 'Slide 2',
-          bullets: ['Nội dung bullet 1', 'Nội dung bullet 2', 'Nội dung bullet 3'],
-          order: 2,
-        },
-      ];
+      // Determine which mock data to use based on prompt content
+      let outline: ICardOutline[] = mockCardOutlines; // Default to EduVi
+
+      const promptLower = state.mainPrompt.toLowerCase();
+      if (promptLower.includes('javascript') || promptLower.includes('js')) {
+        outline = mockJavaScriptOutline;
+      } else if (promptLower.includes('react')) {
+        outline = mockReactOutline;
+      } else if (
+        promptLower.includes('eduvi') ||
+        promptLower.includes('slide') ||
+        promptLower.includes('presentation')
+      ) {
+        outline = mockCardOutlines;
+      }
 
       set({
-        generatedOutline: mockOutline,
-        totalCards: mockOutline.length,
+        generatedOutline: outline,
+        totalCards: outline.length,
         creditUsed: state.creditUsed + 1104,
       });
     } catch (error) {
@@ -230,7 +239,36 @@ export const usePromptEditorStore = create<IPromptEditorStore>((set, get) => ({
     set((state) => ({
       creditUsed: state.creditUsed + amount,
     })),
+  // Example loading
+  loadExample: (exampleType) => {
+    let outline: ICardOutline[];
+    let prompt: { mainPrompt: string; additionalInstructions: string };
 
+    switch (exampleType) {
+      case 'eduvi':
+        outline = mockCardOutlines;
+        prompt = mockPrompts.eduViLaunch;
+        break;
+      case 'javascript':
+        outline = mockJavaScriptOutline;
+        prompt = mockPrompts.jsBasics;
+        break;
+      case 'react':
+        outline = mockReactOutline;
+        prompt = mockPrompts.reactIntro;
+        break;
+      default:
+        outline = mockCardOutlines;
+        prompt = mockPrompts.eduViLaunch;
+    }
+
+    set({
+      mainPrompt: prompt.mainPrompt,
+      additionalInstructions: prompt.additionalInstructions,
+      generatedOutline: outline,
+      totalCards: outline.length,
+    });
+  },
   // Reset
   reset: () => set(initialState),
 }));
