@@ -391,6 +391,7 @@ function QuickLayoutSection() {
   // Card template definitions (6 templates như Gamma)
   const cardTemplates = [
     {
+      id: 'template-001',
       type: 'image-text-left',
       label: 'Image and text',
       preview: (
@@ -407,6 +408,7 @@ function QuickLayoutSection() {
       ),
     },
     {
+      id: 'template-002',
       type: 'text-image-right',
       label: 'Text and image',
       preview: (
@@ -423,6 +425,7 @@ function QuickLayoutSection() {
       ),
     },
     {
+      id: 'template-003',
       type: 'two-columns',
       label: 'Two columns',
       preview: (
@@ -442,6 +445,7 @@ function QuickLayoutSection() {
       ),
     },
     {
+      id: 'template-004',
       type: 'two-columns-alt',
       label: 'Two column text',
       preview: (
@@ -463,6 +467,7 @@ function QuickLayoutSection() {
       ),
     },
     {
+      id: 'template-005',
       type: 'three-columns',
       label: 'Three columns',
       preview: (
@@ -486,6 +491,7 @@ function QuickLayoutSection() {
       ),
     },
     {
+      id: 'template-006',
       type: 'three-columns-alt',
       label: 'Three column text',
       preview: (

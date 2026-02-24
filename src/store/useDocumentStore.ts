@@ -84,7 +84,7 @@ export type AppMode = 'EDITOR' | 'PRESENT';
 
 interface DocumentState {
   // State
-  document: IDocument | null;
+   document: IDocument | null;
   activeCardId: string | null;
   selectedNodeId: string | null;
   isLoading: boolean;

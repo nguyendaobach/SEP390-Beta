@@ -1,40 +1,39 @@
 /**
- * EduVi Mock Data
- * ===============
+ * EduVi Mock Data - BACKEND API CONTRACT
+ * =======================================
  * 
- * This file contains mock data that demonstrates the exact JSON structure
- * the Backend team should return from their API endpoints.
+ * ⚠️ IMPORTANT: This file defines the EXACT JSON structure that Backend API must return.
  * 
- * BACKEND CONTRACT:
+ * BACKEND API ENDPOINTS:
+ * ----------------------
+ * GET    /api/documents/:id      → Returns IDocument (this structure)
+ * POST   /api/documents           → Creates document, returns IDocument
+ * PUT    /api/documents/:id      → Updates document, returns IDocument
+ * DELETE /api/documents/:id      → Returns { success: boolean }
+ * GET    /api/documents?userId=X → Returns IDocument[]
+ * 
+ * DATA FORMAT REQUIREMENTS:
+ * -------------------------
+ * ✅ Pure JSON - NO helper functions like createCard(), createBlock()
+ * ✅ All IDs must be UUID strings (use uuid library: uuid.v4())
+ * ✅ Dates must be ISO 8601 format: "2026-02-24T10:00:00.000Z"
+ * ✅ All enums must use string values: "CARD", "BLOCK", "TEXT", etc.
+ * ✅ Node hierarchy: IDocument → ICard[] → (ILayout | IBlock)[] → IBlock[]
+ * 
+ * VALIDATION RULES:
  * -----------------
- * GET /api/project → Returns IDocument
- * POST /api/project → Creates new document, returns IDocument
- * PUT /api/project/:id → Updates document, returns IDocument
+ * - document.id: required, UUID string
+ * - document.title: required, max 255 chars
+ * - document.cards: required, min 1 card
+ * - card.type: must be "CARD"
+ * - block.type: must be "BLOCK"
+ * - layout.type: must be "LAYOUT"
+ * - block.content.type: must be valid BlockType enum
  * 
- * JSON Structure Example:
- * -----------------------
- * {
- *   "id": "uuid",
- *   "title": "Presentation Title",
- *   "cards": [
- *     {
- *       "id": "uuid",
- *       "type": "CARD",
- *       "title": "Slide 1",
- *       "children": [
- *         {
- *           "id": "uuid",
- *           "type": "BLOCK",
- *           "content": { "type": "TEXT", "html": "<p>Content</p>" },
- *           "children": []
- *         }
- *       ]
- *     }
- *   ],
- *   "activeCardId": "uuid",
- *   "createdAt": "ISO-8601",
- *   "updatedAt": "ISO-8601"
- * }
+ * DATABASE STORAGE:
+ * -----------------
+ * Recommended: Store as JSONB in PostgreSQL or MongoDB document
+ * Alternative: Normalize into documents/cards/blocks/layouts tables
  */
 
 import {
@@ -49,11 +48,21 @@ import {
 } from '@/types';
 
 // ============================================================================
-// HELPER FUNCTIONS FOR CREATING NODES
+// FRONTEND HELPER FUNCTIONS (NOT FOR BACKEND)
 // ============================================================================
 
 /**
- * Creates a text block node
+ * ⚠️ WARNING: These helper functions are ONLY for Frontend development.
+ * Backend API should NOT use these - just return pure JSON.
+ * 
+ * These are convenience utilities for:
+ * - Creating new blocks in the UI editor
+ * - Testing components
+ * - Seeding data
+ */
+
+/**
+ * Creates a text block (Frontend helper only)
  */
 export function createTextBlock(id: string, html: string): IBlock {
   return {
@@ -68,7 +77,7 @@ export function createTextBlock(id: string, html: string): IBlock {
 }
 
 /**
- * Creates a heading block node
+ * Creates a heading block (Frontend helper only)
  */
 export function createHeadingBlock(
   id: string,
@@ -88,7 +97,7 @@ export function createHeadingBlock(
 }
 
 /**
- * Creates an image block node
+ * Creates an image block (Frontend helper only)
  */
 export function createImageBlock(
   id: string,
@@ -110,7 +119,7 @@ export function createImageBlock(
 }
 
 /**
- * Creates a video block node
+ * Creates a video block (Frontend helper only)
  */
 export function createVideoBlock(
   id: string,
@@ -130,7 +139,7 @@ export function createVideoBlock(
 }
 
 /**
- * Creates a layout node
+ * Creates a layout node (Frontend helper only)
  */
 export function createLayout(
   id: string,
@@ -148,7 +157,7 @@ export function createLayout(
 }
 
 /**
- * Creates a card (slide) node
+ * Creates a card/slide node (Frontend helper only)
  */
 export function createCard(
   id: string,
@@ -161,16 +170,13 @@ export function createCard(
     type: NodeType.CARD,
     title,
     children,
-    ...options,
+    backgroundColor: options?.backgroundColor,
+    backgroundImage: options?.backgroundImage,
   };
 }
 
-// ============================================================================
-// INTERACTIVE BLOCK HELPERS
-// ============================================================================
-
 /**
- * Creates a Quiz block node
+ * Creates a Quiz block (Frontend helper only)
  */
 export function createQuizBlock(
   id: string,
@@ -196,7 +202,7 @@ export function createQuizBlock(
 }
 
 /**
- * Creates a Flashcard block node
+ * Creates a Flashcard block (Frontend helper only)
  */
 export function createFlashcardBlock(
   id: string,
@@ -216,13 +222,12 @@ export function createFlashcardBlock(
 }
 
 /**
- * Creates a Fill-in-the-Blank block node
+ * Creates a Fill-in-the-Blank block (Frontend helper only)
  */
 export function createFillBlankBlock(
   id: string,
   sentence: string
 ): IBlock {
-  // Extract blanks from sentence using [bracket] syntax
   const regex = /\[([^\]]+)\]/g;
   const blanks: string[] = [];
   let match;
@@ -243,11 +248,14 @@ export function createFillBlankBlock(
 }
 
 // ============================================================================
-// MOCK DOCUMENT DATA
+// MOCK API RESPONSE - FULL DOCUMENT EXAMPLE
 // ============================================================================
 
 /**
- * Sample document demonstrating the full node hierarchy
+ * Example API Response: GET /api/documents/doc-001
+ * 
+ * This represents the EXACT JSON structure Backend must return.
+ * Frontend will consume this directly without any transformation.
  */
 export const mockDocument: IDocument = {
   id: 'doc-001',
@@ -257,257 +265,329 @@ export const mockDocument: IDocument = {
   updatedAt: '2026-01-31T14:30:00.000Z',
   cards: [
     // ========================================================================
-    // CARD 1: Title Slide
+    // CARD 1: Image and Text (Template 001)
     // ========================================================================
-    createCard(
-      'card-001',
-      'Welcome',
-      [
-        createHeadingBlock(
-          'block-001',
-          'Welcome to EduVi',
-          1
-        ),
-        createTextBlock(
-          'block-002',
-          '<p>The next generation of <strong>slide-based presentations</strong>. Create beautiful, dynamic content with our intuitive editor.</p>'
-        ),
-        createImageBlock(
-          'block-003',
-          'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800',
-          'EduVi Hero Image',
-          'Transform your ideas into stunning presentations'
-        ),
-      ],
-      { backgroundColor: '#f0f9ff' }
-    ),
-
-    // ========================================================================
-    // CARD 2: Features with 2-Column Layout
-    // ========================================================================
-    createCard(
-      'card-002',
-      'Key Features',
-      [
-        createHeadingBlock(
-          'block-004',
-          '<h1>Why Choose EduVi?</h1>',
-          1
-        ),
-        createLayout(
-          'layout-001',
-          LayoutVariant.TWO_COLUMN,
-          [
-            createTextBlock(
-              'block-005',
-              '<h3>🚀 Lightning Fast</h3><p>Built with <em>Next.js 14</em> for optimal performance. Server-side rendering ensures your presentations load instantly.</p>'
-            ),
-            createTextBlock(
-              'block-006',
-              '<h3>🎨 Beautiful Design</h3><p>Professional templates and <strong>Tailwind CSS</strong> styling. Your content always looks polished and modern.</p>'
-            ),
-          ],
-          6
-        ),
-        createLayout(
-          'layout-002',
-          LayoutVariant.TWO_COLUMN,
-          [
-            createTextBlock(
-              'block-007',
-              '<h3>📝 Rich Text Editing</h3><p>Powered by <em>Tiptap</em> editor. Format your text with ease - bold, italic, lists, and more.</p>'
-            ),
-            createTextBlock(
-              'block-008',
-              '<h3>🔄 Real-time Collaboration</h3><p>Work together with your team. Changes sync instantly across all connected devices.</p>'
-            ),
-          ],
-          6
-        ),
-      ]
-    ),
-
-    // ========================================================================
-    // CARD 3: Technical Architecture
-    // ========================================================================
-    createCard(
-      'card-003',
-      'Architecture',
-      [
-        createHeadingBlock(
-          'block-009',
-          '<h1>Node-Based Architecture</h1>',
-          1
-        ),
-        createTextBlock(
-          'block-010',
-          '<p>EduVi uses a <strong>recursive tree structure</strong> for maximum flexibility:</p><ul><li><strong>Card Node</strong> - Represents a slide (X-axis)</li><li><strong>Layout Node</strong> - Structural containers (Y-axis)</li><li><strong>Block Node</strong> - Content elements (Z-axis depth)</li></ul>'
-        ),
-        createLayout(
-          'layout-003',
-          LayoutVariant.THREE_COLUMN,
-          [
-            createTextBlock(
-              'block-011',
-              '<h4>Cards</h4><p>Navigate horizontally between slides. Each card is a self-contained presentation unit.</p>'
-            ),
-            createTextBlock(
-              'block-012',
-              '<h4>Layouts</h4><p>Define structure with grids, columns, and masonry patterns for visual organization.</p>'
-            ),
-            createTextBlock(
-              'block-013',
-              '<h4>Blocks</h4><p>The building blocks: text, images, videos. Drag and drop to reorder.</p>'
-            ),
-          ],
-          4
-        ),
-      ],
-      { backgroundColor: '#fefce8' }
-    ),
-
-    // ========================================================================
-    // CARD 4: Demo Content with Mixed Layouts
-    // ========================================================================
-    createCard(
-      'card-004',
-      'Demo',
-      [
-        createHeadingBlock(
-          'block-014',
-          '<h1>See It In Action</h1>',
-          1
-        ),
-        createLayout(
-          'layout-004',
-          LayoutVariant.SIDEBAR_LEFT,
-          [
-            createImageBlock(
-              'block-015',
-              'https://images.unsplash.com/photo-1551434678-e076c223a692?w=400',
-              'Team collaboration',
-            ),
-            createTextBlock(
-              'block-016',
-              '<h3>Reflow Magic</h3><p>Watch how content <strong>automatically reflows</strong> when you add or edit text. No manual repositioning needed!</p><p>Try expanding this text block and see how siblings adjust their position smoothly.</p>'
-            ),
-          ],
-          6
-        ),
-        createTextBlock(
-          'block-017',
-          '<p><em>Tip: Use the toolbar above to add new blocks and experiment with different layouts!</em></p>'
-        ),
-      ]
-    ),
-
-    // ========================================================================
-    // CARD 5: Call to Action
-    // ========================================================================
-    createCard(
-      'card-005',
-      'Get Started',
-      [
-        createHeadingBlock(
-          'block-018',
-          '<h1>Ready to Create?</h1>',
-          1
-        ),
-        createTextBlock(
-          'block-019',
-          '<p>Start building your presentation today. EduVi makes it easy to create <strong>professional</strong>, <strong>engaging</strong>, and <strong>dynamic</strong> content.</p>'
-        ),
-        createLayout(
-          'layout-005',
-          LayoutVariant.TWO_COLUMN,
-          [
-            createTextBlock(
-              'block-020',
-              '<h3>Free Tier</h3><ul><li>✅ 5 presentations</li><li>✅ Basic templates</li><li>✅ Export to PDF</li><li>❌ Team collaboration</li></ul>'
-            ),
-            createTextBlock(
-              'block-021',
-              '<h3>Pro Tier</h3><ul><li>✅ Unlimited presentations</li><li>✅ Premium templates</li><li>✅ Export to all formats</li><li>✅ Real-time collaboration</li></ul>'
-            ),
-          ],
-          8
-        ),
-      ],
-      { backgroundColor: '#f0fdf4' }
-    ),
-
-    // ========================================================================
-    // CARD 6: Interactive Learning Demo
-    // ========================================================================
-    createCard(
-      'card-006',
-      'Interactive Demo',
-      [
-        createHeadingBlock(
-          'block-022',
-          '<h1>Interactive Learning Widgets</h1>',
-          1
-        ),
-        createTextBlock(
-          'block-023',
-          '<p>EduVi supports <strong>interactive learning content</strong> that engages students. These widgets work seamlessly in the Flutter Viewer app!</p>'
-        ),
-        // Quiz Example
-        createQuizBlock(
-          'block-024',
-          'JavaScript Basics Quiz',
-          [
+    {
+      id: 'card-001',
+      type: NodeType.CARD,
+      templateId: 'template-001',
+      title: 'Welcome',
+      backgroundColor: '#f0f9ff',
+      backgroundImage: undefined,
+      children: [
+        {
+          id: 'layout-001',
+          type: NodeType.LAYOUT,
+          variant: LayoutVariant.SIDEBAR_LEFT,
+          gap: 6,
+          children: [
             {
-              id: 'q1',
-              question: 'What keyword is used to declare a constant in JavaScript?',
-              options: [
-                { id: 'q1-a', text: 'var' },
-                { id: 'q1-b', text: 'let' },
-                { id: 'q1-c', text: 'const' },
-                { id: 'q1-d', text: 'constant' },
-              ],
-              correctIndex: 2,
-              explanation: 'The "const" keyword declares a block-scoped constant that cannot be reassigned.',
+              id: 'block-001',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.IMAGE,
+                src: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800',
+                alt: 'EduVi Hero Image',
+                caption: 'Transform your ideas into stunning presentations',
+              },
+              children: [],
             },
             {
-              id: 'q2',
-              question: 'Which method converts a JSON string to a JavaScript object?',
-              options: [
-                { id: 'q2-a', text: 'JSON.stringify()' },
-                { id: 'q2-b', text: 'JSON.parse()' },
-                { id: 'q2-c', text: 'JSON.toObject()' },
-              ],
-              correctIndex: 1,
-              explanation: 'JSON.parse() parses a JSON string and returns the corresponding JavaScript value or object.',
+              id: 'block-002',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<h1>Welcome to EduVi</h1><p>The next generation of <strong>slide-based presentations</strong>. Create beautiful, dynamic content with our intuitive editor.</p>',
+              },
+              children: [],
             },
-          ]
-        ),
-        createLayout(
-          'layout-006',
-          LayoutVariant.TWO_COLUMN,
-          [
-            // Flashcard Example
-            createFlashcardBlock(
-              'block-025',
-              'What is React?',
-              'React is a JavaScript library for building user interfaces, maintained by Meta. It uses a component-based architecture and virtual DOM for efficient updates.'
-            ),
-            // Fill-in-Blank Example
-            createFillBlankBlock(
-              'block-026',
-              'In React, [useState] is a Hook that lets you add [state] to functional components.'
-            ),
           ],
-          6
-        ),
+        },
       ],
-      { backgroundColor: '#fef3c7' }
-    ),
+    },
+
+    // ========================================================================
+    // CARD 2: Two Columns (Template 003)
+    // ========================================================================
+    {
+      id: 'card-002',
+      type: NodeType.CARD,
+      templateId: 'template-003',
+      title: 'Key Features',
+      backgroundColor: undefined,
+      backgroundImage: undefined,
+      children: [
+        {
+          id: 'block-003',
+          type: NodeType.BLOCK,
+          content: {
+            type: BlockType.HEADING,
+            html: '<h1>Why Choose EduVi?</h1>',
+            level: 1,
+          },
+          children: [],
+        },
+        {
+          id: 'layout-002',
+          type: NodeType.LAYOUT,
+          variant: LayoutVariant.TWO_COLUMN,
+          gap: 6,
+          children: [
+            {
+              id: 'block-004',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<h3>🚀 Lightning Fast</h3><p>Built with <em>Next.js 14</em> for optimal performance.</p><h3>📝 Rich Text Editing</h3><p>Powered by <em>Tiptap</em> editor. Format with ease.</p>',
+              },
+              children: [],
+            },
+            {
+              id: 'block-005',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<h3>🎨 Beautiful Design</h3><p>Professional templates with <strong>Tailwind CSS</strong>.</p><h3>🔄 Real-time Collaboration</h3><p>Work together, sync instantly.</p>',
+              },
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
+
+    // ========================================================================
+    // CARD 3: Three Columns (Template 005)
+    // ========================================================================
+    {
+      id: 'card-003',
+      type: NodeType.CARD,
+      templateId: 'template-005',
+      title: 'Architecture',
+      backgroundColor: '#fefce8',
+      backgroundImage: undefined,
+      children: [
+        {
+          id: 'block-006',
+          type: NodeType.BLOCK,
+          content: {
+            type: BlockType.HEADING,
+            html: '<h1>Node-Based Architecture</h1>',
+            level: 1,
+          },
+          children: [],
+        },
+        {
+          id: 'layout-003',
+          type: NodeType.LAYOUT,
+          variant: LayoutVariant.THREE_COLUMN,
+          gap: 4,
+          children: [
+            {
+              id: 'block-007',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<h4>Cards</h4><p>Navigate horizontally between slides. Self-contained units.</p>',
+              },
+              children: [],
+            },
+            {
+              id: 'block-008',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<h4>Layouts</h4><p>Define structure with grids and columns for organization.</p>',
+              },
+              children: [],
+            },
+            {
+              id: 'block-009',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<h4>Blocks</h4><p>Content elements: text, images, videos. Drag to reorder.</p>',
+              },
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
+
+    // ========================================================================
+    // CARD 4: Text and Image (Template 002)
+    // ========================================================================
+    {
+      id: 'card-004',
+      type: NodeType.CARD,
+      templateId: 'template-002',
+      title: 'Demo',
+      backgroundColor: undefined,
+      backgroundImage: undefined,
+      children: [
+        {
+          id: 'layout-004',
+          type: NodeType.LAYOUT,
+          variant: LayoutVariant.SIDEBAR_RIGHT,
+          gap: 6,
+          children: [
+            {
+              id: 'block-010',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<h1>See It In Action</h1><h3>Reflow Magic</h3><p>Watch how content <strong>automatically reflows</strong> when you edit. No manual repositioning!</p><p><em>Tip: Experiment with layouts!</em></p>',
+              },
+              children: [],
+            },
+            {
+              id: 'block-011',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.IMAGE,
+                src: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=400',
+                alt: 'Team collaboration',
+                caption: undefined,
+              },
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
+
+    // ========================================================================
+    // CARD 5: Two Column Text (Template 004)
+    // ========================================================================
+    {
+      id: 'card-005',
+      type: NodeType.CARD,
+      templateId: 'template-004',
+      title: 'Get Started',
+      backgroundColor: '#f0fdf4',
+      backgroundImage: undefined,
+      children: [
+        {
+          id: 'block-012',
+          type: NodeType.BLOCK,
+          content: {
+            type: BlockType.HEADING,
+            html: '<h1>Ready to Create?</h1>',
+            level: 1,
+          },
+          children: [],
+        },
+        {
+          id: 'layout-005',
+          type: NodeType.LAYOUT,
+          variant: LayoutVariant.TWO_COLUMN,
+          gap: 8,
+          children: [
+            {
+              id: 'block-013',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<h3>Free Tier</h3><p>Start building presentations today.</p><ul><li>✅ 5 presentations</li><li>✅ Basic templates</li><li>✅ Export to PDF</li><li>❌ Team collaboration</li></ul>',
+              },
+              children: [],
+            },
+            {
+              id: 'block-014',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<h3>Pro Tier</h3><p>Create <strong>professional</strong> content.</p><ul><li>✅ Unlimited presentations</li><li>✅ Premium templates</li><li>✅ All formats</li><li>✅ Collaboration</li></ul>',
+              },
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
+
+    // ========================================================================
+    // CARD 6: Three Column Text (Template 006) - Interactive
+    // ========================================================================
+    {
+      id: 'card-006',
+      type: NodeType.CARD,
+      templateId: 'template-006',
+      title: 'Interactive Demo',
+      backgroundColor: '#fef3c7',
+      backgroundImage: undefined,
+      children: [
+        {
+          id: 'block-015',
+          type: NodeType.BLOCK,
+          content: {
+            type: BlockType.HEADING,
+            html: '<h1>Interactive Learning Widgets</h1>',
+            level: 1,
+          },
+          children: [],
+        },
+        {
+          id: 'layout-006',
+          type: NodeType.LAYOUT,
+          variant: LayoutVariant.THREE_COLUMN,
+          gap: 6,
+          children: [
+            {
+              id: 'block-016',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.QUIZ,
+                title: 'JavaScript Quiz',
+                questions: [
+                  {
+                    id: 'q1',
+                    question: 'What keyword declares a constant?',
+                    options: [
+                      { id: 'q1-a', text: 'var' },
+                      { id: 'q1-b', text: 'let' },
+                      { id: 'q1-c', text: 'const' },
+                    ],
+                    correctIndex: 2,
+                    explanation: 'The "const" keyword declares a block-scoped constant.',
+                  },
+                ],
+              },
+              children: [],
+            },
+            {
+              id: 'block-017',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.FLASHCARD,
+                front: 'What is React?',
+                back: 'React is a JavaScript library for building user interfaces, maintained by Meta.',
+              },
+              children: [],
+            },
+            {
+              id: 'block-018',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.FILL_BLANK,
+                sentence: 'In React, [useState] is a Hook that lets you add [state] to components.',
+                blanks: ['useState', 'state'],
+              },
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
   ],
 };
 
 /**
- * Empty document template for new projects
+ * Example API Response: POST /api/documents (Create new document)
+ * 
+ * Minimal document template for new projects.
+ * Backend should generate UUIDs and timestamps automatically.
  */
 export const emptyDocument: IDocument = {
   id: 'doc-new',
@@ -516,14 +596,52 @@ export const emptyDocument: IDocument = {
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   cards: [
-    createCard(
-      'card-new-001',
-      'Slide 1',
-      [
-        createHeadingBlock('block-new-001', '<h1>Your Title Here</h1>', 1),
-        createTextBlock('block-new-002', '<p>Start typing your content...</p>'),
-      ]
-    ),
+    {
+      id: 'card-new-001',
+      type: NodeType.CARD,
+      templateId: 'template-003',
+      title: 'Slide 1',
+      backgroundColor: undefined,
+      backgroundImage: undefined,
+      children: [
+        {
+          id: 'block-new-001',
+          type: NodeType.BLOCK,
+          content: {
+            type: BlockType.HEADING,
+            html: '<h1>Your Title Here</h1>',
+            level: 1,
+          },
+          children: [],
+        },
+        {
+          id: 'layout-new-001',
+          type: NodeType.LAYOUT,
+          variant: LayoutVariant.TWO_COLUMN,
+          gap: 6,
+          children: [
+            {
+              id: 'block-new-002',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<p>Start typing your content...</p>',
+              },
+              children: [],
+            },
+            {
+              id: 'block-new-003',
+              type: NodeType.BLOCK,
+              content: {
+                type: BlockType.TEXT,
+                html: '<p>Add more content here...</p>',
+              },
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
   ],
 };
 

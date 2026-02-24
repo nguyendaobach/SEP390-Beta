@@ -103,6 +103,7 @@ export interface IBaseNode {
  * ICard - Represents a single slide in the presentation
  * 
  * @property title - Slide title (displayed in sidebar)
+ * @property templateId - Optional template ID from cardTemplates
  * @property children - Layout or Block nodes within this card
  * @property backgroundColor - Optional background color
  * @property backgroundImage - Optional background image URL
@@ -110,6 +111,7 @@ export interface IBaseNode {
 export interface ICard extends IBaseNode {
   type: NodeType.CARD;
   title: string;
+  templateId?: string;
   children: (ILayout | IBlock)[];
   backgroundColor?: string;
   backgroundImage?: string;
