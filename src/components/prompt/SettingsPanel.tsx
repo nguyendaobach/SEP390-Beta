@@ -45,45 +45,6 @@ export function SettingsPanel() {
           <h3 className="text-lg font-semibold text-gray-900">Text content</h3>
         </div>
 
-        {/* Text Content Mode */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Text content
-          </label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setTextContentMode(TextContentMode.GENERATE)}
-              className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
-                settings.textContentMode === TextContentMode.GENERATE
-                  ? 'bg-blue-50 border-blue-600 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              ⚡ Generate
-            </button>
-            <button
-              onClick={() => setTextContentMode(TextContentMode.CONDENSE)}
-              className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
-                settings.textContentMode === TextContentMode.CONDENSE
-                  ? 'bg-blue-50 border-blue-600 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              ➕ Condense
-            </button>
-            <button
-              onClick={() => setTextContentMode(TextContentMode.PRESERVE)}
-              className={`flex-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
-                settings.textContentMode === TextContentMode.PRESERVE
-                  ? 'bg-blue-50 border-blue-600 text-blue-700'
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              🔒 Preserve
-            </button>
-          </div>
-        </div>
-
         {/* Amount of Text */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -109,73 +70,6 @@ export function SettingsPanel() {
                   </div>
                   <div className="capitalize">{amount}</div>
                 </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Write For */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Write for...
-          </label>
-          <textarea
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={3}
-            placeholder="e.g., Business professionals, Students..."
-          />
-          <div className="flex flex-wrap gap-2 mt-2">
-            {[
-              { label: 'Business', value: AudienceType.BUSINESS },
-              { label: 'High schoolers', value: AudienceType.HIGH_SCHOOLERS },
-              { label: 'College students', value: AudienceType.COLLEGE_STUDENTS },
-              { label: 'Creatives', value: AudienceType.CREATIVES },
-              { label: 'Tech enthusiasts', value: AudienceType.TECH_ENTHUSIASTS },
-            ].map(({ label, value }) => (
-              <button
-                key={value}
-                onClick={() => setWriteFor(value)}
-                className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                  settings.writeFor === value
-                    ? 'bg-purple-200 text-purple-800'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Tone */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tone
-          </label>
-          <textarea
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows={3}
-            placeholder="e.g., Professional, Conversational..."
-          />
-          <div className="flex flex-wrap gap-2 mt-2">
-            {[
-              { label: 'Professional', value: ToneType.PROFESSIONAL },
-              { label: 'Conversational', value: ToneType.CONVERSATIONAL },
-              { label: 'Technical', value: ToneType.TECHNICAL },
-              { label: 'Academic', value: ToneType.ACADEMIC },
-              { label: 'Inspirational', value: ToneType.INSPIRATIONAL },
-              { label: 'Humorous', value: ToneType.HUMOROUS },
-            ].map(({ label, value }) => (
-              <button
-                key={value}
-                onClick={() => setTone(value)}
-                className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                  settings.tone === value
-                    ? 'bg-purple-200 text-purple-800'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {label}
               </button>
             ))}
           </div>
