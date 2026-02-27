@@ -1,12 +1,13 @@
 /**
  * Content Preview Component
  * =========================
- * Center panel showing the generated content outline
+ * Center panel showing the generated content outline.
+ * Uses useInlineEdit hook + CardEditContext to keep things clean.
  */
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -26,44 +27,36 @@ import { CSS } from '@dnd-kit/utilities';
 import { usePromptEditorStore } from '@/store';
 import { ContentViewMode, ICardOutline } from '@/types';
 import {
-  MoreVertical,
-  AlignLeft,
   CreditCard,
   Plus,
   FileText,
   Trash2,
   GripVertical,
 } from 'lucide-react';
+import { useInlineEdit } from './hooks/useInlineEdit';
+import { CardEditContext, useCardEdit } from './context/CardEditContext';
 
 // ============================================================================
-// SORTABLE CARD ITEM
+// SORTABLE CARD ITEM (uses context instead of prop drilling)
 // ============================================================================
 
 interface CardItemProps {
   card: ICardOutline;
   index: number;
-  editingFields: Record<string, boolean>;
-  editingValues: Record<string, string>;
-  onToggleEdit: (fieldId: string, currentValue: string) => void;
-  onFieldChange: (fieldId: string, value: string) => void;
-  onSaveField: (cardId: string, fieldId: string, fieldType: 'title' | 'bullet') => void;
-  onKeyDown: (e: React.KeyboardEvent, cardId: string, fieldId: string, fieldType: 'title' | 'bullet') => void;
-  onAddBullet: (cardId: string) => void;
-  onDelete: (cardId: string) => void;
 }
 
-function CardItem({
-  card,
-  index,
-  editingFields,
-  editingValues,
-  onToggleEdit,
-  onFieldChange,
-  onSaveField,
-  onKeyDown,
-  onAddBullet,
-  onDelete,
-}: CardItemProps) {
+const CardItem = React.memo(function CardItem({ card, index }: CardItemProps) {
+  const {
+    editingFields,
+    editingValues,
+    toggleEdit,
+    changeField,
+    saveField,
+    handleKeyDown,
+    addBullet,
+    removeCard,
+  } = useCardEdit();
+
   const {
     attributes,
     listeners,
@@ -112,14 +105,14 @@ function CardItem({
               type="text"
               autoFocus
               value={editingValues[titleFieldId] || ''}
-              onChange={(e) => onFieldChange(titleFieldId, e.target.value)}
-              onBlur={() => onSaveField(card.id, titleFieldId, 'title')}
-              onKeyDown={(e) => onKeyDown(e, card.id, titleFieldId, 'title')}
+              onChange={(e) => changeField(titleFieldId, e.target.value)}
+              onBlur={() => saveField(card.id, titleFieldId, 'title')}
+              onKeyDown={(e) => handleKeyDown(e, card.id, titleFieldId, 'title')}
               className="w-full px-3 py-2 mb-3 border border-blue-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-semibold"
             />
           ) : (
             <h3
-              onClick={() => onToggleEdit(titleFieldId, card.title)}
+              onClick={() => toggleEdit(titleFieldId, card.title)}
               className="text-lg font-semibold text-gray-900 mb-3 cursor-pointer hover:text-blue-600 transition-colors"
             >
               {card.title}
@@ -142,14 +135,14 @@ function CardItem({
                           type="text"
                           autoFocus
                           value={editingValues[bulletFieldId] || ''}
-                          onChange={(e) => onFieldChange(bulletFieldId, e.target.value)}
-                          onBlur={() => onSaveField(card.id, bulletFieldId, 'bullet')}
-                          onKeyDown={(e) => onKeyDown(e, card.id, bulletFieldId, 'bullet')}
+                          onChange={(e) => changeField(bulletFieldId, e.target.value)}
+                          onBlur={() => saveField(card.id, bulletFieldId, 'bullet')}
+                          onKeyDown={(e) => handleKeyDown(e, card.id, bulletFieldId, 'bullet')}
                           className="w-full px-2 py-1 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                         />
                       ) : (
                         <span
-                          onClick={() => onToggleEdit(bulletFieldId, bullet)}
+                          onClick={() => toggleEdit(bulletFieldId, bullet)}
                           className="text-sm cursor-pointer hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors block"
                         >
                           {bullet}
@@ -164,7 +157,7 @@ function CardItem({
 
           {/* Add bullet button */}
           <button
-            onClick={() => onAddBullet(card.id)}
+            onClick={() => addBullet(card.id)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -175,7 +168,7 @@ function CardItem({
         {/* Delete button */}
         <div className="flex-shrink-0">
           <button
-            onClick={() => onDelete(card.id)}
+            onClick={() => removeCard(card.id)}
             className="p-1 hover:bg-red-100 text-red-600 rounded transition-colors"
             title="Delete card"
           >
@@ -185,7 +178,7 @@ function CardItem({
       </div>
     </div>
   );
-}
+});
 
 // ============================================================================
 // CONTENT PREVIEW COMPONENT
@@ -203,95 +196,29 @@ export function ContentPreview() {
     reorderCards,
   } = usePromptEditorStore();
 
-  const [editingFields, setEditingFields] = useState<Record<string, boolean>>({});
-  const [editingValues, setEditingValues] = useState<Record<string, string>>({});
+  /* ── Inline editing (delegated to custom hook) ── */
+  const inlineEdit = useInlineEdit(generatedOutline, updateCard);
 
+  /* ── DnD sensors ── */
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-
-  const toggleEditingField = (fieldId: string, currentValue: string) => {
-    setEditingFields((prev) => ({ ...prev, [fieldId]: !prev[fieldId] }));
-    if (!editingFields[fieldId]) {
-      setEditingValues((prev) => ({ ...prev, [fieldId]: currentValue }));
-    }
-  };
-
-  const handleFieldChange = (fieldId: string, value: string) => {
-    setEditingValues((prev) => ({ ...prev, [fieldId]: value }));
-  };
-
-  const handleSaveField = (cardId: string, fieldId: string, fieldType: 'title' | 'bullet') => {
-    const card = generatedOutline.find((c) => c.id === cardId);
-    if (!card) return;
-
-    const newValue = editingValues[fieldId] || '';
-    
-    if (fieldType === 'title') {
-      updateCard(cardId, { ...card, title: newValue });
-    } else if (fieldType === 'bullet') {
-      const bulletIndex = parseInt(fieldId.split('-').pop() || '0');
-      const newBullets = [...card.bullets];
-      
-      if (newValue.trim() === '') {
-        newBullets.splice(bulletIndex, 1);
-      } else {
-        newBullets[bulletIndex] = newValue;
-      }
-      
-      updateCard(cardId, { ...card, bullets: newBullets });
-    }
-
-    setEditingFields((prev) => ({ ...prev, [fieldId]: false }));
-  };
-
-  const handleKeyDown = (
-    e: React.KeyboardEvent,
-    cardId: string,
-    fieldId: string,
-    fieldType: 'title' | 'bullet'
-  ) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleSaveField(cardId, fieldId, fieldType);
-    } else if (e.key === 'Escape') {
-      setEditingFields((prev) => ({ ...prev, [fieldId]: false }));
-    }
-  };
-
-  const handleAddBullet = (cardId: string) => {
-    const card = generatedOutline.find((c) => c.id === cardId);
-    if (!card) return;
-
-    const newBulletIndex = card.bullets.length;
-    updateCard(cardId, { ...card, bullets: [...card.bullets, ''] });
-    
-    const newFieldId = `bullet-${cardId}-${newBulletIndex}`;
-    setTimeout(() => {
-      setEditingFields((prev) => ({ ...prev, [newFieldId]: true }));
-      setEditingValues((prev) => ({ ...prev, [newFieldId]: '' }));
-    }, 0);
-  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
-      const oldIndex = generatedOutline.findIndex((card) => card.id === active.id);
-      const newIndex = generatedOutline.findIndex((card) => card.id === over.id);
-      
-      if (oldIndex !== -1 && newIndex !== -1) {
-        reorderCards(oldIndex, newIndex);
-      }
+      const oldIndex = generatedOutline.findIndex((c) => c.id === active.id);
+      const newIndex = generatedOutline.findIndex((c) => c.id === over.id);
+      if (oldIndex !== -1 && newIndex !== -1) reorderCards(oldIndex, newIndex);
     }
   };
+
+  /* ── Context value (memoised to avoid unnecessary re-renders) ── */
+  const contextValue = useMemo(
+    () => ({ ...inlineEdit, removeCard }),
+    [inlineEdit, removeCard]
+  );
 
   return (
     <div className="flex-1 h-full bg-white overflow-y-auto">
@@ -332,7 +259,7 @@ export function ContentPreview() {
             </p>
           </div>
         ) : (
-          <>
+          <CardEditContext.Provider value={contextValue}>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -344,19 +271,7 @@ export function ContentPreview() {
               >
                 <div className="space-y-4">
                   {generatedOutline.map((card, index) => (
-                    <CardItem
-                      key={card.id}
-                      card={card}
-                      index={index}
-                      editingFields={editingFields}
-                      editingValues={editingValues}
-                      onToggleEdit={toggleEditingField}
-                      onFieldChange={handleFieldChange}
-                      onSaveField={handleSaveField}
-                      onKeyDown={handleKeyDown}
-                      onAddBullet={handleAddBullet}
-                      onDelete={removeCard}
-                    />
+                    <CardItem key={card.id} card={card} index={index} />
                   ))}
                 </div>
               </SortableContext>
@@ -364,18 +279,20 @@ export function ContentPreview() {
 
             {/* Add card button */}
             <button
-              onClick={() => addCard({
-                id: `card-${Date.now()}`,
-                title: 'New Card',
-                bullets: [],
-                order: totalCards + 1,
-              })}
+              onClick={() =>
+                addCard({
+                  id: crypto.randomUUID(),
+                  title: 'New Card',
+                  bullets: [],
+                  order: totalCards + 1,
+                })
+              }
               className="w-full mt-4 py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-900 transition-colors flex items-center justify-center gap-2"
             >
               <Plus className="w-5 h-5" />
               Add card
             </button>
-          </>
+          </CardEditContext.Provider>
         )}
       </div>
 
@@ -385,9 +302,6 @@ export function ContentPreview() {
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div>
               <span className="font-medium">{totalCards} cards total</span>
-            </div>
-            <div className="text-gray-400">
-              Type <span className="font-mono bg-gray-100 px-1 rounded">---</span> for card breaks
             </div>
           </div>
         </div>

@@ -18,12 +18,10 @@ import { useRouter } from 'next/navigation';
 import { SettingsPanel } from '@/components/prompt/SettingsPanel';
 import { ContentPreview } from '@/components/prompt/ContentPreview';
 import { PromptPanel } from '@/components/prompt/PromptPanel';
-import { usePromptEditorStore } from '@/store';
 import { Home, HelpCircle } from 'lucide-react';
 
 export default function PromptEditorPage() {
   const router = useRouter();
-  const { creditUsed, totalCredit } = usePromptEditorStore();
 
   return (
     <div className="h-screen flex flex-col bg-white">
